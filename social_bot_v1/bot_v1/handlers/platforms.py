@@ -14,6 +14,7 @@ async def accounts_home(update, context):
     accs = storage.get_accounts()
     rows = [[InlineKeyboardButton(f"{p} ({len(accs.get(p, {}))})", callback_data=f"acc:{p}")]
             for p in config.PLATFORMS]
+    rows.append([InlineKeyboardButton("➕ Add Another Platform", callback_data="menu:add_platform")])
     rows.append([InlineKeyboardButton("🔙 Main Menu", callback_data="menu:main")])
     await show(update, "📺 কোন প্ল্যাটফর্ম ম্যানেজ করবে?", InlineKeyboardMarkup(rows))
 
