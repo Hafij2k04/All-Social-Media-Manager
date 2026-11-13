@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from threading import Thread
 
@@ -63,6 +64,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_connectors.chat))
     app.add_error_handler(on_error)
 
+    asyncio.set_event_loop(asyncio.new_event_loop())
     app.run_polling(drop_pending_updates=True)
 
 
