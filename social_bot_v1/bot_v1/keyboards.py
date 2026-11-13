@@ -7,7 +7,8 @@ def main_menu_markup():
          InlineKeyboardButton("🤖 AI Connectors", callback_data="menu:ai")],
         [InlineKeyboardButton("⬆️ Upload Video", callback_data="menu:upload"),
          InlineKeyboardButton("📊 Analyze & Ideas", callback_data="menu:analyze")],
-        [InlineKeyboardButton("⚙️ Status", callback_data="menu:status")],
+        [InlineKeyboardButton("⚙️ Status", callback_data="menu:status"),
+         InlineKeyboardButton("🌐 Language", callback_data="menu:language")],
     ])
 
 
