@@ -18,6 +18,7 @@ async def ai_home(update, context):
     for p in config.AI_PROVIDERS:
         mark = ("✅" if p in keys else "❌") + (" ⭐" if p == active else "")
         rows.append([InlineKeyboardButton(f"{p} {mark}", callback_data=f"ai:{p}")])
+    rows.append([InlineKeyboardButton("➕ Add Another Connector", callback_data="menu:add_connector")])
     rows.append([InlineKeyboardButton("🔙 Main Menu", callback_data="menu:main")])
     await show(update, "🤖 AI Connectors\n✅ = key আছে, ⭐ = active (সাধারণ মেসেজের উত্তর দেয়)", InlineKeyboardMarkup(rows))
 
