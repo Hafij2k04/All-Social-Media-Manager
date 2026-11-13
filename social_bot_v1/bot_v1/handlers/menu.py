@@ -25,6 +25,15 @@ async def status(update, context):
     await show(update, text, InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Main Menu", callback_data="menu:main")]]))
 
 
+async def language_home(update, context):
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🇧🇩 বাংলা", callback_data="menu:main"),
+         InlineKeyboardButton("🇺🇸 English", callback_data="menu:main")],
+        [InlineKeyboardButton("🔙 Main Menu", callback_data="menu:main")],
+    ])
+    await show(update, "🌐 ভাষা নির্বাচন করো / Select Language:", markup)
+
+
 async def menu_router(update, context):
     action = update.callback_query.data.split(":", 1)[1]
     if action == "main":
@@ -39,3 +48,11 @@ async def menu_router(update, context):
         await automation.analyze_home(update, context)
     elif action == "status":
         await status(update, context)
+    elif action == "language":
+        await language_home(update, context)
+    elif action == "add_platform":
+        await show(update, "➕ নতুন প্ল্যাটফর্ম যোগ করার অপশন পরবর্তী ধাপে চালু করা হবে।",
+                   InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="menu:accounts")]]))
+    elif action == "add_connector":
+        await show(update, "➕ নতুন AI Connector যোগ করার অপশন পরবর্তী ধাপে চালু করা হবে।",
+                   InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="menu:ai")]]))
