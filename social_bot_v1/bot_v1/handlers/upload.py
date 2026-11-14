@@ -297,7 +297,7 @@ async def receive_thumb_input(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
     return UPLOAD_DASHBOARD
 
-
+async def receive_video
 def get_upload_handler() -> ConversationHandler:
     return ConversationHandler(
         entry_points=[CallbackQueryHandler(upload_home, pattern="^menu:upload$")],
