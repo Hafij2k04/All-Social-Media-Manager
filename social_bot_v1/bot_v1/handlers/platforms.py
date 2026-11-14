@@ -1,6 +1,13 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (CallbackQueryHandler, CommandHandler, ConversationHandler,
-                          MessageHandler, filters)
+import logging
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import (
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    ConversationHandler,
+    MessageHandler,
+    filters,
+)
 
 import config
 import storage
@@ -8,65 +15,83 @@ from handlers.common import show
 from keyboards import MAIN_TEXT, main_menu_markup
 from services.youtube_service import fetch_youtube_stats
 
+logger = logging.getLogger(__name__)
+
 WAIT_ACCOUNT = 1
 WAIT_FIELD_UPDATE = 2
 
+PLATFORM_ICONS = {
+    "youtube": "▶️",
+    "facebook": "📘",
+    "tiktok": "🎵",
+    "instagram": "📸",
+    "linkedin": "💼",
+}
 
-async def accounts_home(update, context):
+
+async def accounts_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
     accs = storage.get_accounts()
-    rows = [[InlineKeyboardButton(f"{p} ({len(accs.get(p, {}))})", callback_data=f"acc:{p}")]
-            for p in config.PLATFORMS]
+    rows = []
+    for p in config.PLATFORMS:
+        icon = PLATFORM_ICONS.get(p.lower(), "📺")
+        count = len(accs.get(p, {}))
+        rows.append([InlineKeyboardButton(f"{icon} {p} ({count})", callback_data=f"acc:{p}")])
+
     rows.append([InlineKeyboardButton("➕ Add Another Platform", callback_data="menu:add_platform")])
     rows.append([InlineKeyboardButton("🔙 Main Menu", callback_data="menu:main")])
-    await show(update, "📺 কোন প্ল্যাটফর্ম ম্যানেজ করবে?", InlineKeyboardMarkup(rows))
+    await show(update, "📺 **কোন প্ল্যাটফর্ম ম্যানেজ করবে?**\nনিচ থেকে প্ল্যাটফর্ম সিলেক্ট করো:", InlineKeyboardMarkup(rows))
 
 
-async def _render_platform(update, p):
+async def _render_platform(update: Update, p: str):
     chans = storage.get_accounts().get(p, {})
+    icon = PLATFORM_ICONS.get(p.lower(), "📋")
     rows = []
 
     if chans:
-        body = f"📋 **{p} — যুক্ত করা চ্যানেল/আইডি তালিকা:**\nযেকোনো আইডির বিস্তারিত স্টুডিও রিপোর্ট, API সেটআপ বা স্ট্যাটাস দেখতে নিচের বাটনে ক্লিক করো:"
+        body = (
+            f"{icon} **{p} — যুক্ত করা চ্যানেল/পেজ তালিকা:**\n\n"
+            f"🟢 = API/Token সংযুক্ত | 🟡 = সেটআপ বাকি\n"
+            f"যেকোনো আইডির স্টুডিও ড্যাশবোর্ড বা API সেটআপ করতে নামের ওপর ক্লিক করো:"
+        )
         for name, info in chans.items():
-            # নতুন বা পুরনো দুই ধরনের ডেটা ফরম্যাটই সাপোর্ট করবে
             if isinstance(info, dict):
                 has_key = "🟢" if (info.get("api_key") or info.get("oauth_token")) else "🟡"
             else:
                 has_key = "🟡"
             rows.append([InlineKeyboardButton(f"{has_key} {name}", callback_data=f"acc_item:{p}:{name}")])
     else:
-        body = f"📋 **{p}**\n\nএখনো কোনো অ্যাকাউন্ট বা চ্যানেল যোগ করা হয়নি।"
+        body = f"{icon} **{p}**\n\nএখনো কোনো অ্যাকাউন্ট বা চ্যানেল যোগ করা হয়নি।\nনতুন চ্যানেল বা পেজ যুক্ত করতে নিচের বাটনে ক্লিক করো।"
 
-    rows.append([InlineKeyboardButton("➕ Add Account/Channel", callback_data=f"acc_add:{p}")])
-    rows.append([InlineKeyboardButton("🔙 Platforms", callback_data="menu:accounts")])
+    rows.append([InlineKeyboardButton(f"➕ Add {p} Account", callback_data=f"acc_add:{p}")])
+    rows.append([InlineKeyboardButton("🔙 All Platforms", callback_data="menu:accounts")])
 
     await show(update, body, InlineKeyboardMarkup(rows))
 
 
-async def platform_view(update, context):
+async def platform_view(update: Update, context: ContextTypes.DEFAULT_TYPE):
     p = update.callback_query.data.split(":", 1)[1]
     await _render_platform(update, p)
 
 
-def _normalize_info(info):
+def _normalize_info(info) -> dict:
     if isinstance(info, dict):
         return {
             "link": info.get("link", "লিংক নেই"),
             "channel_id": info.get("channel_id", ""),
             "api_key": info.get("api_key", ""),
             "oauth_token": info.get("oauth_token", None),
-            "stats": info.get("stats", {"subscribers": "0", "views": "0", "videos": "0"})
+            "stats": info.get("stats", {"subscribers": "0", "views": "0", "videos": "0"}),
         }
     return {
         "link": str(info),
         "channel_id": "",
         "api_key": "",
         "oauth_token": None,
-        "stats": {"subscribers": "0", "views": "0", "videos": "0"}
+        "stats": {"subscribers": "0", "views": "0", "videos": "0"},
     }
 
 
-async def _render_channel_dashboard(update, p, name, notice=""):
+async def _render_channel_dashboard(update: Update, p: str, name: str, notice: str = ""):
     chans = storage.get_accounts().get(p, {})
     if name not in chans:
         await _render_platform(update, p)
@@ -84,8 +109,8 @@ async def _render_channel_dashboard(update, p, name, notice=""):
         f"━━━━━━━━━━━━━━━━━━━━\n"
         f"🔗 **লিংক:** {info.get('link')}\n"
         f"🆔 **Channel/Page ID:** `{ch_id}`\n"
-        f"🔑 **Data API Key:** {api_status}\n"
-        f"🔐 **OAuth Access:** {oauth_status}\n\n"
+        f"🔑 **API Key / App Token:** {api_status}\n"
+        f"🔐 **OAuth / Page Access Token:** {oauth_status}\n\n"
         f"📈 **চ্যানেল/আইডি অ্যানালিটিক্স:**\n"
         f"• 👥 সাবস্ক্রাইবার / ফলোয়ার: **{stats.get('subscribers', '0')}**\n"
         f"• 👁 মোট ভিউ (Reach): **{stats.get('views', '0')}**\n"
@@ -97,27 +122,27 @@ async def _render_channel_dashboard(update, p, name, notice=""):
     rows = [
         [
             InlineKeyboardButton("🔄 Sync Live Stats", callback_data=f"acc_sync:{p}:{name}"),
-            InlineKeyboardButton("🆔 Set Channel ID", callback_data=f"acc_edit:{p}:{name}:channel_id"),
+            InlineKeyboardButton("🆔 Set ID / Handle", callback_data=f"acc_edit:{p}:{name}:channel_id"),
         ],
         [
             InlineKeyboardButton("🔑 Set API Key", callback_data=f"acc_edit:{p}:{name}:api_key"),
-            InlineKeyboardButton("🔐 Set OAuth Token", callback_data=f"acc_edit:{p}:{name}:oauth_token"),
+            InlineKeyboardButton("🔐 Set Access Token", callback_data=f"acc_edit:{p}:{name}:oauth_token"),
         ],
         [
             InlineKeyboardButton("🔗 Edit Link", callback_data=f"acc_edit:{p}:{name}:link"),
             InlineKeyboardButton("🗑 Remove Account", callback_data=f"acc_del:{p}:{name}"),
         ],
-        [InlineKeyboardButton(f"🔙 Back to {p}", callback_data=f"acc:{p}")]
+        [InlineKeyboardButton(f"🔙 Back to {p}", callback_data=f"acc:{p}")],
     ]
     await show(update, text, InlineKeyboardMarkup(rows))
 
 
-async def account_item_view(update, context):
+async def account_item_view(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _, p, name = update.callback_query.data.split(":", 2)
     await _render_channel_dashboard(update, p, name)
 
 
-async def account_sync(update, context):
+async def account_sync(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _, p, name = update.callback_query.data.split(":", 2)
     chans = storage.get_accounts().get(p, {})
     if name not in chans:
@@ -137,68 +162,103 @@ async def account_sync(update, context):
         info["stats"] = {
             "subscribers": res.get("subscribers", "0"),
             "views": res.get("views", "0"),
-            "videos": res.get("videos", "0")
+            "videos": res.get("videos", "0"),
         }
         storage.add_account(p, name, info)
         await _render_channel_dashboard(update, p, name, notice="✅ YouTube থেকে সফলভাবে লাইভ ডেটা আপডেট হয়েছে!")
     else:
-        await _render_channel_dashboard(update, p, name, notice=f"ℹ️ {p}-এর লাইভ API সিঙ্ক পরের ধাপে যুক্ত হবে।")
+        await _render_channel_dashboard(
+            update, p, name, notice=f"ℹ️ {p}-এর লাইভ স্ট্যাটাস সিঙ্ক করতে প্রথমে Access Token ও Page ID যুক্ত করুন।"
+        )
 
 
-async def account_delete(update, context):
+async def account_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _, p, name = update.callback_query.data.split(":", 2)
     if hasattr(storage, "remove_account"):
         storage.remove_account(p, name)
     await _render_platform(update, p)
 
 
-async def add_start(update, context):
+async def add_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     p = update.callback_query.data.split(":", 1)[1]
     context.user_data["platform"] = p
+    kb = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 বাতিল করুন (Cancel)", callback_data=f"acc:{p}")]])
     await show(
         update,
         f"➕ **{p}-এ নতুন অ্যাকাউন্ট/চ্যানেল যোগ করো:**\n\n"
-        f"নিচের ফরম্যাটে লেখো:\n"
-        f"`নাম - লিংক বা Channel ID`\n"
-        f"(যেমন: `Clipzilla - youtube.com/@Clipzilla`)\n\n"
-        f"বাতিল করতে /cancel"
+        f"নিচের ফরম্যাটে মেসেজ পাঠাও:\n"
+        f"`নাম - লিংক বা Channel ID`\n\n"
+        f"**উদাহরণ:**\n"
+        f"• `Clipzilla - https://youtube.com/@Clipzilla`\n"
+        f"• `Nexus Creation - https://facebook.com/NexusCreation`",
+        kb,
     )
     return WAIT_ACCOUNT
 
 
-async def add_save(update, context):
-    p = context.user_data.get("platform")
+async def add_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    p = context.user_data.get("platform", "YouTube")
     text = update.message.text.strip()
-    name, link = (text.split(" - ", 1) + [""])[:2] if " - " in text else (text, "লিংক নেই")
-    name = name.strip()
+    if " - " in text:
+        name, link = text.split(" - ", 1)
+    else:
+        name, link = text, "লিংক নেই"
+
+    # নামের ভেতর ':' থাকলে তা সরিয়ে নেওয়া হচ্ছে যাতে বাটনের callback_data না ভাঙে
+    name = name.replace(":", "-").strip()
     link = link.strip() or "লিংক নেই"
 
-    storage.add_account(p, name, {
-        "link": link,
-        "channel_id": link if link.startswith("UC") else "",
-        "api_key": "",
-        "oauth_token": None,
-        "stats": {"subscribers": "0", "views": "0", "videos": "0"}
-    })
-    await _render_channel_dashboard(update, p, name, notice="✅ অ্যাকাউন্ট যুক্ত হয়েছে! এবার নিচ থেকে API Key বা Channel ID সেট করতে পারো।")
+    ch_id = ""
+    if link.startswith("UC") or link.startswith("@"):
+        ch_id = link
+    elif "youtube.com/@" in link:
+        ch_id = "@" + link.split("youtube.com/@", 1)[1].split("/")[0].split("?")[0]
+
+    storage.add_account(
+        p,
+        name,
+        {
+            "link": link,
+            "channel_id": ch_id,
+            "api_key": "",
+            "oauth_token": None,
+            "stats": {"subscribers": "0", "views": "0", "videos": "0"},
+        },
+    )
+    await _render_channel_dashboard(
+        update, p, name, notice="✅ অ্যাকাউন্ট যুক্ত হয়েছে! এবার নিচ থেকে API Key বা Access Token সেট করতে পারো।"
+    )
     return ConversationHandler.END
 
 
-async def edit_field_start(update, context):
+async def edit_field_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _, p, name, field = update.callback_query.data.split(":", 3)
     context.user_data["edit_target"] = (p, name, field)
 
     prompts = {
-        "channel_id": "🆔 **Channel ID বা Handle দাও:**\n(যেমন: `UCxxxxxxxxxxxx` অথবা `@MyChannel`)",
-        "api_key": "🔑 **Google Cloud / Platform API Key দাও:**\n(নিরাপত্তার জন্য মেসেজটি সেভ হওয়ার সাথে সাথে চ্যাট থেকে ডিলিট হয়ে যাবে)",
-        "oauth_token": "🔐 **OAuth Token / Refresh Token JSON দাও:**\n(ভিডিও সরাসরি আপলোড করার অ্যাক্সেসের জন্য)",
-        "link": "🔗 **চ্যানেল বা পেজের নতুন লিংক দাও:**"
+        "channel_id": (
+            f"🆔 **{name}-এর Channel ID / Page ID বা Handle দাও:**\n"
+            f"• YouTube হলে: `UCxxxxxxxx` অথবা `@Clipzilla`\n"
+            f"• Facebook হলে: আপনার Page ID নম্বর"
+        ),
+        "api_key": (
+            f"🔑 **{name}-এর API Key দাও:**\n"
+            f"• YouTube লাইভ ভিউ/সাবস্ক্রাইবার দেখার জন্য **YouTube Data API v3 Key** দিন।\n"
+            f"*(নিরাপত্তার স্বার্থে মেসেজটি সেভ হওয়ার সাথে সাথে চ্যাট থেকে ডিলিট হয়ে যাবে)*"
+        ),
+        "oauth_token": (
+            f"🔐 **{name}-এর OAuth / Access Token দাও:**\n"
+            f"• সরাসরি ভিডিও আপলোড করার জন্য এটি প্রয়োজন।\n"
+            f"*(নিরাপত্তার স্বার্থে মেসেজটি সেভ হওয়ার সাথে সাথে চ্যাট থেকে ডিলিট হয়ে যাবে)*"
+        ),
+        "link": f"🔗 **{name}-এর নতুন লিংক দাও:**",
     }
-    await show(update, f"{prompts.get(field, 'নতুন তথ্য দাও:')}\n\nবাতিল করতে /cancel")
+    kb = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 বাতিল করুন (Cancel)", callback_data=f"acc_item:{p}:{name}")]])
+    await show(update, prompts.get(field, "নতুন তথ্য দাও:"), kb)
     return WAIT_FIELD_UPDATE
 
 
-async def edit_field_save(update, context):
+async def edit_field_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target = context.user_data.get("edit_target")
     if not target:
         await show(update, MAIN_TEXT, main_menu_markup())
@@ -222,7 +282,22 @@ async def edit_field_save(update, context):
     return ConversationHandler.END
 
 
-async def cancel(update, context):
+async def cancel_to_platform(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    data = update.callback_query.data
+    if data.startswith("acc_item:"):
+        _, p, name = data.split(":", 2)
+        await _render_channel_dashboard(update, p, name)
+    elif data.startswith("acc:"):
+        p = data.split(":", 1)[1]
+        await _render_platform(update, p)
+    else:
+        await show(update, MAIN_TEXT, main_menu_markup())
+    return ConversationHandler.END
+
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data.pop("platform", None)
+    context.user_data.pop("edit_target", None)
     await show(update, MAIN_TEXT, main_menu_markup())
     return ConversationHandler.END
 
@@ -237,32 +312,25 @@ conv = ConversationHandler(
     ],
     states={
         WAIT_ACCOUNT: [
-            CallbackQueryHandler(cancel, pattern=r"^menu:"),
+            CallbackQueryHandler(cancel_to_platform, pattern=r"^(acc:|menu:)"),
             MessageHandler(filters.TEXT & ~filters.COMMAND, add_save),
         ],
         WAIT_FIELD_UPDATE: [
-            CallbackQueryHandler(cancel, pattern=r"^menu:"),
+            CallbackQueryHandler(cancel_to_platform, pattern=r"^(acc_item:|acc:|menu:)"),
             MessageHandler(filters.TEXT & ~filters.COMMAND, edit_field_save),
         ],
     },
-    fallbacks=[CommandHandler(["start", "cancel"], cancel)],
+    fallbacks=[
+        CommandHandler(["start", "cancel"], cancel),
+        CallbackQueryHandler(cancel, pattern=r"^menu:main$"),
+    ],
+    allow_reentry=True,
 )
 
-import logging
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import ContextTypes
-import storage
 
-logger = logging.getLogger(__name__)
-
-PLATFORM_ICONS = {
-    "youtube": "▶️",
-    "facebook": "📘",
-    "tiktok": "🎵",
-    "instagram": "📸",
-    "linkedin": "💼",
-}
-
+# =====================================================================
+# আপলোড মেনুর জন্য প্ল্যাটফর্ম সিলেকশন হেল্পার ফাংশনসমূহ
+# =====================================================================
 
 def get_available_targets() -> list[dict]:
     """storage.py থেকে সেভ করা সব প্ল্যাটফর্ম ও চ্যানেল/পেজ নিয়ে আসে।"""
@@ -287,7 +355,7 @@ def build_upload_platform_keyboard(selected_ids: list[str], is_open: bool) -> li
     rows = [[
         InlineKeyboardButton(
             f"📡 প্ল্যাটফর্ম নির্বাচন ({count} টি সিলেক্টেড) {arrow}",
-            callback_data="up_plat_dropdown"
+            callback_data="up_plat_dropdown",
         )
     ]]
 
@@ -303,7 +371,7 @@ def build_upload_platform_keyboard(selected_ids: list[str], is_open: bool) -> li
                 rows.append([
                     InlineKeyboardButton(
                         f"{checked} {item['label']}",
-                        callback_data=f"up_plat_tog|{item['id']}"
+                        callback_data=f"up_plat_tog|{item['id']}",
                     )
                 ])
     return rows
