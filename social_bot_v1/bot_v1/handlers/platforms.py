@@ -247,3 +247,79 @@ conv = ConversationHandler(
     },
     fallbacks=[CommandHandler(["start", "cancel"], cancel)],
 )
+
+import logging
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import ContextTypes
+import storage
+
+logger = logging.getLogger(__name__)
+
+PLATFORM_ICONS = {
+    "youtube": "▶️",
+    "facebook": "📘",
+    "tiktok": "🎵",
+    "instagram": "📸",
+    "linkedin": "💼",
+}
+
+
+def get_available_targets() -> list[dict]:
+    """storage.py থেকে সেভ করা সব প্ল্যাটফর্ম ও চ্যানেল/পেজ নিয়ে আসে।"""
+    accs = storage.get_accounts()
+    targets = []
+    for plat, channels in accs.items():
+        icon = PLATFORM_ICONS.get(plat.lower(), "📡")
+        for ch_name in channels.keys():
+            targets.append({
+                "id": f"{plat}:{ch_name}",
+                "platform": plat,
+                "name": ch_name,
+                "label": f"{icon} {plat.capitalize()} ({ch_name})",
+            })
+    return targets
+
+
+def build_upload_platform_keyboard(selected_ids: list[str], is_open: bool) -> list[list[InlineKeyboardButton]]:
+    """ড্রপডাউন অ্যারো (▼/▲) এবং টিকবক্স (✅/⬜) সহ প্ল্যাটফর্ম সিলেকশন বাটন তৈরি করে।"""
+    arrow = "▲" if is_open else "▼"
+    count = len(selected_ids)
+    rows = [[
+        InlineKeyboardButton(
+            f"📡 প্ল্যাটফর্ম নির্বাচন ({count} টি সিলেক্টেড) {arrow}",
+            callback_data="up_plat_dropdown"
+        )
+    ]]
+
+    if is_open:
+        targets = get_available_targets()
+        if not targets:
+            rows.append([
+                InlineKeyboardButton("⚠️ কোনো অ্যাকাউন্ট যুক্ত নেই (Accounts-এ যান)", callback_data="menu:accounts")
+            ])
+        else:
+            for item in targets:
+                checked = "✅" if item["id"] in selected_ids else "⬜"
+                rows.append([
+                    InlineKeyboardButton(
+                        f"{checked} {item['label']}",
+                        callback_data=f"up_plat_tog|{item['id']}"
+                    )
+                ])
+    return rows
+
+
+async def toggle_upload_platform(context: ContextTypes.DEFAULT_TYPE, action: str) -> None:
+    """টিকবক্স ও ড্রপডাউন বাটনের ক্লিক হ্যান্ডেল করে।"""
+    data = context.user_data.get("upload_session")
+    if not data:
+        return
+
+    if action == "up_plat_dropdown":
+        data["plat_open"] = not data["plat_open"]
+    elif action.startswith("up_plat_tog|"):
+        target_id = action.split("|", 1)[1]
+        if target_id in data["selected_targets"]:
+            data["selected_targets"].remove(target_id)
+        else:
+            data["selected_targets"].append(target_id)
