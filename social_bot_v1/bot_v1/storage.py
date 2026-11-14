@@ -1,11 +1,14 @@
-"""ডাটা সেভ/লোড। এখন JSON ফাইল (অস্থায়ী)। V2 তে শুধু এই ফাইলের ভেতরটা ডাটাবেস দিয়ে বদলাবে,
-বাকি কোড অপরিবর্তিত থাকবে।"""
+"""ডাটা সেভ/লোড এবং ব্যাকআপ রিকভারি সিস্টেম।"""
 import json
 import os
-
 import config
 
-_DEFAULT = {"accounts": {}, "ai_keys": {}, "active_ai": None}
+_DEFAULT = {
+    "accounts": {},
+    "ai_keys": {},
+    "active_ai": None,
+    "custom_platforms": []
+}
 
 
 def _load():
@@ -18,6 +21,19 @@ def _load():
             return d
         except Exception:
             pass
+
+    # ফাইল না থাকলে Render-এর Environment Variable (INITIAL_DATA_JSON) থেকে রিকভার করার চেষ্টা করবে
+    env_backup = os.getenv("INITIAL_DATA_JSON", "").strip()
+    if env_backup:
+        try:
+            d = json.loads(env_backup)
+            for k, v in _DEFAULT.items():
+                d.setdefault(k, type(v)() if v is not None else None)
+            _save(d)
+            return d
+        except Exception:
+            pass
+
     return json.loads(json.dumps(_DEFAULT))
 
 
@@ -26,25 +42,43 @@ def _save(d):
         json.dump(d, f, indent=2, ensure_ascii=False)
 
 
+def export_raw_json() -> str:
+    """পুরো ডাটাবেস ব্যাকআপ নেওয়ার জন্য JSON স্ট্রিং রিটার্ন করে।"""
+    return json.dumps(_load(), ensure_ascii=False)
+
+
+# ---- প্ল্যাটফর্ম তালিকা ----
+def get_all_platforms() -> list[str]:
+    d = _load()
+    base = list(getattr(config, "PLATFORMS", ["YouTube", "Facebook", "TikTok"]))
+    for p in d.get("custom_platforms", []):
+        if p not in base:
+            base.append(p)
+    return base
+
+
+def add_custom_platform(platform_name: str):
+    d = _load()
+    customs = d.setdefault("custom_platforms", [])
+    if platform_name not in customs and platform_name not in getattr(config, "PLATFORMS", []):
+        customs.append(platform_name)
+        _save(d)
+
+
 # ---- অ্যাকাউন্ট ও চ্যানেল ডেটা ----
 def get_accounts():
     return _load()["accounts"]
 
 
 def add_account(platform, name, data):
-    """
-    নতুন অ্যাকাউন্ট বা চ্যানেল সেভ করে।
-    data যদি সাধারণ টেক্সট (লিংক) হয় অথবা ডিকশনারি (API Key, Channel ID সহ) হয়—দুটোই সাপোর্ট করবে।
-    """
     d = _load()
     if isinstance(data, str):
-        # পুরনো স্ট্রিং ফরম্যাট হলে ডিকশনারিতে রূপান্তর করে নেবে
         account_info = {
             "link": data,
             "channel_id": "",
             "api_key": "",
             "oauth_token": None,
-            "stats": {}
+            "stats": {"subscribers": "0", "views": "0", "videos": "0"}
         }
     elif isinstance(data, dict):
         account_info = data
@@ -56,7 +90,6 @@ def add_account(platform, name, data):
 
 
 def get_account_details(platform, name):
-    """নির্দিষ্ট কোনো চ্যানেল বা আইডির সব তথ্য (API, স্ট্যাটাস ইত্যাদি) রিটার্ন করে।"""
     accs = get_accounts().get(platform, {})
     val = accs.get(name)
     if isinstance(val, str):
@@ -65,13 +98,12 @@ def get_account_details(platform, name):
             "channel_id": "",
             "api_key": "",
             "oauth_token": None,
-            "stats": {}
+            "stats": {"subscribers": "0", "views": "0", "videos": "0"}
         }
     return val or {}
 
 
 def update_account_details(platform, name, updates: dict):
-    """অ্যাকাউন্টের API Key, Token বা Analytics ডাটা আপডেট করার জন্য।"""
     d = _load()
     platform_accs = d["accounts"].setdefault(platform, {})
     current = platform_accs.get(name, {})
@@ -83,7 +115,6 @@ def update_account_details(platform, name, updates: dict):
 
 
 def remove_account(platform, name):
-    """কোনো অ্যাকাউন্ট বা চ্যানেল ডিলিট করার জন্য।"""
     d = _load()
     if platform in d["accounts"] and name in d["accounts"][platform]:
         del d["accounts"][platform][name]
