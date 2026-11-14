@@ -318,7 +318,7 @@ def get_upload_handler() -> ConversationHandler:
             ],
         },
         fallbacks=[
-            CommandHandler("start", lambda u, c: ConversationHandler.END)
+            CommandHandler("start", lambda u, c: ConversationHandler.END),
             CallbackQueryHandler(handle_dashboard_action, pattern="^menu:main$"),
         ],
         allow_reentry=True,
