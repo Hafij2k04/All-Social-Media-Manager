@@ -1,4 +1,5 @@
 import logging
+import re
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     CallbackQueryHandler,
@@ -29,6 +30,41 @@ PLATFORM_ICONS = {
 }
 
 
+def _auto_extract_id(platform: str, link: str) -> str:
+    """লিংক থেকে প্ল্যাটফর্ম অনুযায়ী অটোমেটিক Channel ID, Page ID বা Username বের করে।"""
+    p = platform.lower()
+    s = (link or "").strip()
+    if not s or s == "লিংক নেই":
+        return ""
+
+    if p == "youtube":
+        m_uc = re.search(r"(UC[a-zA-Z0-9_-]{22})", s)
+        if m_uc:
+            return m_uc.group(1)
+        m_handle = re.search(r"@([a-zA-Z0-9_.-]+)", s)
+        if m_handle:
+            return "@" + m_handle.group(1).split("/")[0].split("?")[0]
+
+    elif p == "facebook":
+        # profile.php?id=61596169348807 থেকে সংখ্যাটি বের করবে
+        m_id = re.search(r"[?&]id=(\d+)", s)
+        if m_id:
+            return m_id.group(1)
+        m_num = re.search(r"facebook\.com/(\d{10,})", s)
+        if m_num:
+            return m_num.group(1)
+        m_page = re.search(r"facebook\.com/([a-zA-Z0-9.]+)/?", s)
+        if m_page and m_page.group(1).lower() not in ("profile.php", "pages", "groups", "share"):
+            return m_page.group(1)
+
+    elif p == "tiktok":
+        m_tt = re.search(r"@([a-zA-Z0-9_.-]+)", s)
+        if m_tt:
+            return "@" + m_tt.group(1).split("/")[0].split("?")[0]
+
+    return ""
+
+
 async def accounts_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
     accs = storage.get_accounts()
     platforms = storage.get_all_platforms()
@@ -50,9 +86,9 @@ async def _render_platform(update: Update, p: str):
 
     if chans:
         body = (
-            f"{icon} **{p} — যুক্ত করা চ্যানেল/পেজ তালিকা:**\n\n"
-            f"🟢 = API/Token সংযুক্ত | 🟡 = সেটআপ বাকি\n"
-            f"যেকোনো আইডির স্টুডিও ড্যাশবোর্ড বা API সেটআপ করতে নামের ওপর ক্লিক করো:"
+            f"{icon} **{p} — যুক্ত করা অ্যাকাউন্ট তালিকা:**\n\n"
+            f"🟢 = কানেক্টেড | 🟡 = টোকেন/API সেটআপ বাকি\n"
+            f"যেকোনো অ্যাকাউন্টের ড্যাশবোর্ডে যেতে নামের ওপর ক্লিক করো:"
         )
         for name, info in chans.items():
             if isinstance(info, dict):
@@ -61,7 +97,7 @@ async def _render_platform(update: Update, p: str):
                 has_key = "🟡"
             rows.append([InlineKeyboardButton(f"{has_key} {name}", callback_data=f"acc_item:{p}:{name}")])
     else:
-        body = f"{icon} **{p}**\n\nএখনো কোনো অ্যাকাউন্ট বা চ্যানেল যোগ করা হয়নি।\nনতুন চ্যানেল বা পেজ যুক্ত করতে নিচের বাটনে ক্লিক করো।"
+        body = f"{icon} **{p}**\n\nএখনো কোনো অ্যাকাউন্ট যোগ করা হয়নি।\nনতুন যুক্ত করতে নিচের বাটনে ক্লিক করো।"
 
     rows.append([InlineKeyboardButton(f"➕ Add {p} Account", callback_data=f"acc_add:{p}")])
     rows.append([InlineKeyboardButton("🔙 All Platforms", callback_data="menu:accounts")])
@@ -74,18 +110,21 @@ async def platform_view(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _render_platform(update, p)
 
 
-def _normalize_info(info) -> dict:
+def _normalize_info(info, platform: str = "") -> dict:
     if isinstance(info, dict):
+        link = info.get("link", "লিংক নেই")
+        ch_id = info.get("channel_id", "") or _auto_extract_id(platform, link)
         return {
-            "link": info.get("link", "লিংক নেই"),
-            "channel_id": info.get("channel_id", ""),
+            "link": link,
+            "channel_id": ch_id,
             "api_key": info.get("api_key", ""),
             "oauth_token": info.get("oauth_token", None),
             "stats": info.get("stats", {"subscribers": "0", "views": "0", "videos": "0"}),
         }
+    link = str(info)
     return {
-        "link": str(info),
-        "channel_id": "",
+        "link": link,
+        "channel_id": _auto_extract_id(platform, link),
         "api_key": "",
         "oauth_token": None,
         "stats": {"subscribers": "0", "views": "0", "videos": "0"},
@@ -98,43 +137,113 @@ async def _render_channel_dashboard(update: Update, p: str, name: str, notice: s
         await _render_platform(update, p)
         return
 
-    info = _normalize_info(chans[name])
+    info = _normalize_info(chans[name], p)
+    # যদি অটো-এক্সট্রাক্ট হয়ে থাকে তবে সেভ করে রাখবে
+    storage.add_account(p, name, info)
+
     stats = info.get("stats") or {}
-
-    api_status = "✅ সংযুক্ত" if info.get("api_key") else "❌ নেই"
-    oauth_status = "✅ সংযুক্ত (Upload Ready)" if info.get("oauth_token") else "❌ নেই"
+    p_low = p.lower()
     ch_id = info.get("channel_id") or "সেট করা নেই"
+    api_ok = "✅ সংযুক্ত" if info.get("api_key") else "❌ নেই"
+    oauth_ok = "✅ সংযুক্ত (Ready)" if info.get("oauth_token") else "❌ নেই"
 
-    text = (
-        f"📊 **{p} Studio — {name}**\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"🔗 **লিংক:** {info.get('link')}\n"
-        f"🆔 **Channel/Page ID:** `{ch_id}`\n"
-        f"🔑 **API Key / Client Key:** {api_status}\n"
-        f"🔐 **OAuth / Access Token:** {oauth_status}\n\n"
-        f"📈 **চ্যানেল/আইডি অ্যানালিটিক্স:**\n"
-        f"• 👥 সাবস্ক্রাইবার / ফলোয়ার: **{stats.get('subscribers', '0')}**\n"
-        f"• 👁 মোট ভিউ / লাইক: **{stats.get('views', '0')}**\n"
-        f"• 🎬 মোট ভিডিও: **{stats.get('videos', '0')}**\n"
-    )
+    # ---- প্ল্যাটফর্ম অনুযায়ী আলাদা আলাদা ড্যাশবোর্ড ও বাটন ----
+    if p_low == "youtube":
+        text = (
+            f"▶️ **YouTube Studio — {name}**\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"🔗 **চ্যানেল লিংক:** {info.get('link')}\n"
+            f"🆔 **Channel ID:** `{ch_id}`\n"
+            f"🔑 **YouTube Data API v3:** {api_ok}\n"
+            f"🔐 **OAuth Token (Upload):** {oauth_ok}\n\n"
+            f"📈 **YouTube চ্যানেল অ্যানালিটিক্স:**\n"
+            f"• 👥 সাবস্ক্রাইবার: **{stats.get('subscribers', '0')}**\n"
+            f"• 👁 মোট ভিউ: **{stats.get('views', '0')}**\n"
+            f"• 🎬 মোট ভিডিও: **{stats.get('videos', '0')}**\n"
+        )
+        rows = [
+            [
+                InlineKeyboardButton("🔄 Sync YouTube Stats", callback_data=f"acc_sync:{p}:{name}"),
+                InlineKeyboardButton("🆔 Set Channel ID", callback_data=f"acc_edit:{p}:{name}:channel_id"),
+            ],
+            [
+                InlineKeyboardButton("🔑 Set YouTube API Key", callback_data=f"acc_edit:{p}:{name}:api_key"),
+                InlineKeyboardButton("🔐 Set OAuth Token", callback_data=f"acc_edit:{p}:{name}:oauth_token"),
+            ],
+        ]
+
+    elif p_low == "facebook":
+        fb_token_ok = "✅ সংযুক্ত (Ready)" if (info.get("oauth_token") or info.get("api_key")) else "❌ নেই"
+        text = (
+            f"📘 **Facebook Page Studio — {name}**\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"🔗 **পেজ লিংক:** {info.get('link')}\n"
+            f"🆔 **Facebook Page ID:** `{ch_id}`\n"
+            f"🔐 **Page Access Token:** {fb_token_ok}\n\n"
+            f"📈 **Facebook পেজ অ্যানালিটিক্স:**\n"
+            f"• 👥 মোট ফলোয়ার: **{stats.get('subscribers', '0')}**\n"
+            f"• 👍 পেজ লাইক: **{stats.get('views', '0')}**\n"
+            f"• 📡 আপলোড স্ট্যাটাস: **{stats.get('videos', 'Not Synced')}**\n"
+        )
+        # ফেসবুকে কোনো আলাদা API Key লাগে না, শুধু Page ID ও Page Access Token
+        rows = [
+            [
+                InlineKeyboardButton("🔄 Sync Page Stats", callback_data=f"acc_sync:{p}:{name}"),
+                InlineKeyboardButton("🆔 Set Page ID", callback_data=f"acc_edit:{p}:{name}:channel_id"),
+            ],
+            [
+                InlineKeyboardButton("🔐 Set Page Access Token", callback_data=f"acc_edit:{p}:{name}:oauth_token"),
+            ],
+        ]
+
+    elif p_low == "tiktok":
+        text = (
+            f"🎵 **TikTok Studio — {name}**\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"🔗 **প্রোফাইল লিংক:** {info.get('link')}\n"
+            f"🆔 **TikTok @Username:** `{ch_id}`\n"
+            f"🔑 **Client Key:** {api_ok}\n"
+            f"🔐 **Access Token (Upload):** {oauth_ok}\n\n"
+            f"📈 **TikTok প্রোফাইল অ্যানালিটিক্স:**\n"
+            f"• 👥 ফলোয়ার: **{stats.get('subscribers', '0')}**\n"
+            f"• ❤️ মোট লাইক: **{stats.get('views', '0')}**\n"
+            f"• 🎬 মোট ভিডিও: **{stats.get('videos', '0')}**\n"
+        )
+        rows = [
+            [
+                InlineKeyboardButton("🔄 Check Status", callback_data=f"acc_sync:{p}:{name}"),
+                InlineKeyboardButton("🆔 Set @Username", callback_data=f"acc_edit:{p}:{name}:channel_id"),
+            ],
+            [
+                InlineKeyboardButton("🔑 Set Client Key", callback_data=f"acc_edit:{p}:{name}:api_key"),
+                InlineKeyboardButton("🔐 Set Access Token", callback_data=f"acc_edit:{p}:{name}:oauth_token"),
+            ],
+        ]
+
+    else:
+        text = (
+            f"📊 **{p} Studio — {name}**\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"🔗 **লিংক:** {info.get('link')}\n"
+            f"🆔 **Account ID:** `{ch_id}`\n"
+            f"🔐 **Access Token:** {oauth_ok}\n"
+        )
+        rows = [
+            [
+                InlineKeyboardButton("🆔 Set Account ID", callback_data=f"acc_edit:{p}:{name}:channel_id"),
+                InlineKeyboardButton("🔐 Set Access Token", callback_data=f"acc_edit:{p}:{name}:oauth_token"),
+            ],
+        ]
+
     if notice:
         text += f"\n💡 {notice}\n"
 
-    rows = [
-        [
-            InlineKeyboardButton("🔄 Sync Live Stats", callback_data=f"acc_sync:{p}:{name}"),
-            InlineKeyboardButton("🆔 Set ID / Handle", callback_data=f"acc_edit:{p}:{name}:channel_id"),
-        ],
-        [
-            InlineKeyboardButton("🔑 Set API Key", callback_data=f"acc_edit:{p}:{name}:api_key"),
-            InlineKeyboardButton("🔐 Set Access Token", callback_data=f"acc_edit:{p}:{name}:oauth_token"),
-        ],
-        [
-            InlineKeyboardButton("🔗 Edit Link", callback_data=f"acc_edit:{p}:{name}:link"),
-            InlineKeyboardButton("🗑 Remove Account", callback_data=f"acc_del:{p}:{name}"),
-        ],
-        [InlineKeyboardButton(f"🔙 Back to {p}", callback_data=f"acc:{p}")],
-    ]
+    rows.append([
+        InlineKeyboardButton("🔗 Edit Link", callback_data=f"acc_edit:{p}:{name}:link"),
+        InlineKeyboardButton("🗑 Remove Account", callback_data=f"acc_del:{p}:{name}"),
+    ])
+    rows.append([InlineKeyboardButton(f"🔙 Back to {p}", callback_data=f"acc:{p}")])
+
     await show(update, text, InlineKeyboardMarkup(rows))
 
 
@@ -150,7 +259,7 @@ async def account_sync(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _render_platform(update, p)
         return
 
-    info = _normalize_info(chans[name])
+    info = _normalize_info(chans[name], p)
 
     if p.lower() == "youtube":
         target = info.get("channel_id") or info.get("link") or name
@@ -180,7 +289,7 @@ async def account_sync(update: Update, context: ContextTypes.DEFAULT_TYPE):
         info["stats"] = {
             "subscribers": res.get("subscribers", "0"),
             "views": res.get("views", "0"),
-            "videos": res.get("videos", "0"),
+            "videos": res.get("videos", "Ready"),
         }
         storage.add_account(p, name, info)
         await _render_channel_dashboard(update, p, name, notice="✅ Facebook Page থেকে সফলভাবে লাইভ ডেটা আপডেট হয়েছে!")
@@ -190,7 +299,7 @@ async def account_sync(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = (
             f"✅ {p} অ্যাকাউন্টের টোকেন প্রস্তুত আছে (Upload Ready)।"
             if has_token
-            else f"⚠️ {p}-এ আপলোড বা সিঙ্ক করতে প্রথমে Access Token যুক্ত করুন।"
+            else f"⚠️ {p}-এ কানেক্ট করতে প্রথমে Access Token যুক্ত করুন।"
         )
         await _render_channel_dashboard(update, p, name, notice=msg)
 
@@ -223,15 +332,24 @@ async def add_platform_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def add_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     p = update.callback_query.data.split(":", 1)[1]
     context.user_data["platform"] = p
+    p_low = p.lower()
+
+    if p_low == "youtube":
+        example = "`Hafiz Islamic Story - https://youtube.com/channel/UCMY29TCNAzSNXbhimee1f8A`"
+    elif p_low == "facebook":
+        example = "`Hafiz Islamic Story - https://www.facebook.com/profile.php?id=61596169348807`"
+    elif p_low == "tiktok":
+        example = "`Clipzilla - https://www.tiktok.com/@clipzilla`"
+    else:
+        example = f"`My Account - https://{p_low}.com/myprofile`"
+
     kb = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 বাতিল করুন (Cancel)", callback_data=f"acc:{p}")]])
     await show(
         update,
-        f"➕ **{p}-এ নতুন অ্যাকাউন্ট/চ্যানেল যোগ করো:**\n\n"
+        f"➕ **{p}-এ নতুন অ্যাকাউন্ট যোগ করো:**\n\n"
         f"নিচের ফরম্যাটে মেসেজ পাঠাও:\n"
-        f"`নাম - লিংক বা Channel ID`\n\n"
-        f"**উদাহরণ:**\n"
-        f"• `Clipzilla - https://youtube.com/@Clipzilla`\n"
-        f"• `Nexus Creation - https://facebook.com/NexusCreation`",
+        f"`নাম - লিংক`\n\n"
+        f"**উদাহরণ:**\n{example}",
         kb,
     )
     return WAIT_ACCOUNT
@@ -247,12 +365,7 @@ async def add_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     name = name.replace(":", "-").strip()
     link = link.strip() or "লিংক নেই"
-
-    ch_id = ""
-    if link.startswith("UC") or link.startswith("@"):
-        ch_id = link
-    elif "youtube.com/@" in link:
-        ch_id = "@" + link.split("youtube.com/@", 1)[1].split("/")[0].split("?")[0]
+    ch_id = _auto_extract_id(p, link)
 
     storage.add_account(
         p,
@@ -265,36 +378,69 @@ async def add_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "stats": {"subscribers": "0", "views": "0", "videos": "0"},
         },
     )
-    await _render_channel_dashboard(
-        update, p, name, notice="✅ অ্যাকাউন্ট যুক্ত হয়েছে! এবার নিচ থেকে API Key বা Access Token সেট করতে পারো।"
-    )
+
+    if p.lower() == "facebook":
+        hint = "✅ পেজ যুক্ত হয়েছে! এবার নিচ থেকে **🔐 Set Page Access Token** সেট করো।"
+    elif p.lower() == "youtube":
+        hint = "✅ চ্যানেল যুক্ত হয়েছে! এবার **🔑 Set YouTube API Key** দিলে লাইভ ভিউ/সাবস্ক্রাইবার দেখতে পাবে।"
+    else:
+        hint = "✅ অ্যাকাউন্ট যুক্ত হয়েছে! এবার নিচ থেকে প্রয়োজনীয় টোকেন সেট করো।"
+
+    await _render_channel_dashboard(update, p, name, notice=hint)
     return ConversationHandler.END
 
 
 async def edit_field_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _, p, name, field = update.callback_query.data.split(":", 3)
     context.user_data["edit_target"] = (p, name, field)
+    p_low = p.lower()
 
-    prompts = {
-        "channel_id": (
-            f"🆔 **{name}-এর Channel ID / Page ID বা Handle দাও:**\n"
-            f"• YouTube হলে: `UCxxxxxxxx` অথবা `@Clipzilla`\n"
-            f"• Facebook হলে: আপনার Page ID নম্বর"
-        ),
-        "api_key": (
-            f"🔑 **{name}-এর API Key দাও:**\n"
-            f"• YouTube লাইভ ভিউ/সাবস্ক্রাইবার দেখার জন্য **YouTube Data API v3 Key** দিন।\n"
-            f"*(নিরাপত্তার স্বার্থে মেসেজটি সেভ হওয়ার সাথে সাথে চ্যাট থেকে ডিলিট হয়ে যাবে)*"
-        ),
-        "oauth_token": (
-            f"🔐 **{name}-এর OAuth / Access Token দাও:**\n"
-            f"• সরাসরি ভিডিও আপলোড বা Facebook সিঙ্কের জন্য এটি প্রয়োজন।\n"
-            f"*(নিরাপত্তার স্বার্থে মেসেজটি সেভ হওয়ার সাথে সাথে চ্যাট থেকে ডিলিট হয়ে যাবে)*"
-        ),
-        "link": f"🔗 **{name}-এর নতুন লিংক দাও:**",
-    }
+    if field == "channel_id":
+        if p_low == "youtube":
+            msg = f"🆔 **{name}-এর YouTube Channel ID বা @Handle দাও:**\n(যেমন: `UCMY29TCNAzSNXbhimee1f8A` অথবা `@Clipzilla`)"
+        elif p_low == "facebook":
+            msg = f"🆔 **{name}-এর Facebook Page ID দাও:**\n(যেমন: `61596169348807`)"
+        elif p_low == "tiktok":
+            msg = f"🆔 **{name}-এর TikTok @Username দাও:**\n(যেমন: `@clipzilla`)"
+        else:
+            msg = f"🆔 **{name}-এর Account ID দাও:**"
+
+    elif field == "api_key":
+        if p_low == "youtube":
+            msg = (
+                f"🔑 **{name}-এর YouTube Data API v3 Key দাও:**\n"
+                f"Google Cloud Console থেকে পাওয়া `AIzaSy...` কি-টি এখানে পেস্ট করো।\n"
+                f"*(নিরাপত্তার স্বার্থে মেসেজটি সেভ হওয়ার সাথে সাথে ডিলিট হয়ে যাবে)*"
+            )
+        elif p_low == "tiktok":
+            msg = f"🔑 **{name}-এর TikTok Developer Client Key দাও:**"
+        else:
+            msg = f"🔑 **{name}-এর API Key দাও:**"
+
+    elif field == "oauth_token":
+        if p_low == "youtube":
+            msg = (
+                f"🔐 **{name}-এর YouTube OAuth Token JSON দাও:**\n"
+                f"সরাসরি ভিডিও আপলোড করার জন্য OAuth Refresh Token বা JSON পেস্ট করো।\n"
+                f"*(মেসেজটি অটো-ডিলিট হবে)*"
+            )
+        elif p_low == "facebook":
+            msg = (
+                f"🔐 **{name}-এর Facebook Page Access Token দাও:**\n"
+                f"Meta Developer / Graph API Explorer থেকে পাওয়া `EAA...` পেজ টোকেনটি পেস্ট করো।\n"
+                f"এই একটি টোকেন দিয়েই ফলোয়ার সিঙ্ক এবং ভিডিও/রিলস আপলোড দুটোই হবে!\n"
+                f"*(মেসেজটি অটো-ডিলিট হবে)*"
+            )
+        elif p_low == "tiktok":
+            msg = f"🔐 **{name}-এর TikTok Access Token দাও:**\n*(মেসেজটি অটো-ডিলিট হবে)*"
+        else:
+            msg = f"🔐 **{name}-এর Access Token দাও:**"
+
+    else:
+        msg = f"🔗 **{name}-এর নতুন লিংক দাও:**"
+
     kb = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 বাতিল করুন (Cancel)", callback_data=f"acc_item:{p}:{name}")]])
-    await show(update, prompts.get(field, "নতুন তথ্য দাও:"), kb)
+    await show(update, msg, kb)
     return WAIT_FIELD_UPDATE
 
 
@@ -314,11 +460,13 @@ async def edit_field_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
 
     chans = storage.get_accounts().get(p, {})
-    info = _normalize_info(chans.get(name, {}))
+    info = _normalize_info(chans.get(name, {}), p)
     info[field] = val
-    storage.add_account(p, name, info)
+    if field == "link" and not info.get("channel_id"):
+        info["channel_id"] = _auto_extract_id(p, val)
 
-    await _render_channel_dashboard(update, p, name, notice=f"✅ `{field}` সফলভাবে সেভ করা হয়েছে!")
+    storage.add_account(p, name, info)
+    await _render_channel_dashboard(update, p, name, notice="✅ তথ্য সফলভাবে সেভ করা হয়েছে!")
     return ConversationHandler.END
 
 
