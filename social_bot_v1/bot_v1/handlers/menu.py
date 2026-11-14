@@ -2,7 +2,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 import config
 import storage
-from handlers import ai_connectors, automation, platforms, upload
+from handlers import ai_connectors, automation, platforms
 from handlers.common import show
 from keyboards import MAIN_TEXT, main_menu_markup
 
@@ -42,8 +42,6 @@ async def menu_router(update, context):
         await platforms.accounts_home(update, context)
     elif action == "ai":
         await ai_connectors.ai_home(update, context)
-    elif action == "upload":
-        await upload.upload_home(update, context)
     elif action == "analyze":
         await automation.analyze_home(update, context)
     elif action == "status":
