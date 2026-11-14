@@ -9,16 +9,16 @@ from telegram.ext import (
     filters,
 )
 
-import config
 import storage
 from handlers.common import show
 from keyboards import MAIN_TEXT, main_menu_markup
-from services.youtube_service import fetch_youtube_stats
+from services.youtube_service import fetch_youtube_stats, fetch_facebook_stats
 
 logger = logging.getLogger(__name__)
 
 WAIT_ACCOUNT = 1
 WAIT_FIELD_UPDATE = 2
+WAIT_NEW_PLATFORM = 3
 
 PLATFORM_ICONS = {
     "youtube": "▶️",
@@ -31,8 +31,9 @@ PLATFORM_ICONS = {
 
 async def accounts_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
     accs = storage.get_accounts()
+    platforms = storage.get_all_platforms()
     rows = []
-    for p in config.PLATFORMS:
+    for p in platforms:
         icon = PLATFORM_ICONS.get(p.lower(), "📺")
         count = len(accs.get(p, {}))
         rows.append([InlineKeyboardButton(f"{icon} {p} ({count})", callback_data=f"acc:{p}")])
@@ -109,11 +110,11 @@ async def _render_channel_dashboard(update: Update, p: str, name: str, notice: s
         f"━━━━━━━━━━━━━━━━━━━━\n"
         f"🔗 **লিংক:** {info.get('link')}\n"
         f"🆔 **Channel/Page ID:** `{ch_id}`\n"
-        f"🔑 **API Key / App Token:** {api_status}\n"
-        f"🔐 **OAuth / Page Access Token:** {oauth_status}\n\n"
+        f"🔑 **API Key / Client Key:** {api_status}\n"
+        f"🔐 **OAuth / Access Token:** {oauth_status}\n\n"
         f"📈 **চ্যানেল/আইডি অ্যানালিটিক্স:**\n"
         f"• 👥 সাবস্ক্রাইবার / ফলোয়ার: **{stats.get('subscribers', '0')}**\n"
-        f"• 👁 মোট ভিউ (Reach): **{stats.get('views', '0')}**\n"
+        f"• 👁 মোট ভিউ / লাইক: **{stats.get('views', '0')}**\n"
         f"• 🎬 মোট ভিডিও: **{stats.get('videos', '0')}**\n"
     )
     if notice:
@@ -152,7 +153,7 @@ async def account_sync(update: Update, context: ContextTypes.DEFAULT_TYPE):
     info = _normalize_info(chans[name])
 
     if p.lower() == "youtube":
-        target = info.get("channel_id") or info.get("link")
+        target = info.get("channel_id") or info.get("link") or name
         res, err = fetch_youtube_stats(target, info.get("api_key", ""))
         if err:
             await _render_channel_dashboard(update, p, name, notice=err)
@@ -166,10 +167,32 @@ async def account_sync(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
         storage.add_account(p, name, info)
         await _render_channel_dashboard(update, p, name, notice="✅ YouTube থেকে সফলভাবে লাইভ ডেটা আপডেট হয়েছে!")
+
+    elif p.lower() == "facebook":
+        token = info.get("oauth_token") or info.get("api_key") or ""
+        target_id = info.get("channel_id") or "me"
+        res, err = fetch_facebook_stats(target_id, token)
+        if err:
+            await _render_channel_dashboard(update, p, name, notice=err)
+            return
+
+        info["channel_id"] = res.get("channel_id") or info["channel_id"]
+        info["stats"] = {
+            "subscribers": res.get("subscribers", "0"),
+            "views": res.get("views", "0"),
+            "videos": res.get("videos", "0"),
+        }
+        storage.add_account(p, name, info)
+        await _render_channel_dashboard(update, p, name, notice="✅ Facebook Page থেকে সফলভাবে লাইভ ডেটা আপডেট হয়েছে!")
+
     else:
-        await _render_channel_dashboard(
-            update, p, name, notice=f"ℹ️ {p}-এর লাইভ স্ট্যাটাস সিঙ্ক করতে প্রথমে Access Token ও Page ID যুক্ত করুন।"
+        has_token = bool(info.get("oauth_token") or info.get("api_key"))
+        msg = (
+            f"✅ {p} অ্যাকাউন্টের টোকেন প্রস্তুত আছে (Upload Ready)।"
+            if has_token
+            else f"⚠️ {p}-এ আপলোড বা সিঙ্ক করতে প্রথমে Access Token যুক্ত করুন।"
         )
+        await _render_channel_dashboard(update, p, name, notice=msg)
 
 
 async def account_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -177,6 +200,24 @@ async def account_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if hasattr(storage, "remove_account"):
         storage.remove_account(p, name)
     await _render_platform(update, p)
+
+
+async def add_platform_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    kb = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 বাতিল করুন (Cancel)", callback_data="menu:accounts")]])
+    await show(
+        update,
+        "➕ **নতুন প্ল্যাটফর্মের নাম লেখো:**\n(যেমন: `Instagram`, `LinkedIn`, `X`)",
+        kb,
+    )
+    return WAIT_NEW_PLATFORM
+
+
+async def add_platform_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    plat_name = update.message.text.strip().replace(":", "")
+    if plat_name:
+        storage.add_custom_platform(plat_name)
+    await accounts_home(update, context)
+    return ConversationHandler.END
 
 
 async def add_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -204,7 +245,6 @@ async def add_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         name, link = text, "লিংক নেই"
 
-    # নামের ভেতর ':' থাকলে তা সরিয়ে নেওয়া হচ্ছে যাতে বাটনের callback_data না ভাঙে
     name = name.replace(":", "-").strip()
     link = link.strip() or "লিংক নেই"
 
@@ -248,7 +288,7 @@ async def edit_field_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ),
         "oauth_token": (
             f"🔐 **{name}-এর OAuth / Access Token দাও:**\n"
-            f"• সরাসরি ভিডিও আপলোড করার জন্য এটি প্রয়োজন।\n"
+            f"• সরাসরি ভিডিও আপলোড বা Facebook সিঙ্কের জন্য এটি প্রয়োজন।\n"
             f"*(নিরাপত্তার স্বার্থে মেসেজটি সেভ হওয়ার সাথে সাথে চ্যাট থেকে ডিলিট হয়ে যাবে)*"
         ),
         "link": f"🔗 **{name}-এর নতুন লিংক দাও:**",
@@ -290,6 +330,8 @@ async def cancel_to_platform(update: Update, context: ContextTypes.DEFAULT_TYPE)
     elif data.startswith("acc:"):
         p = data.split(":", 1)[1]
         await _render_platform(update, p)
+    elif data == "menu:accounts":
+        await accounts_home(update, context)
     else:
         await show(update, MAIN_TEXT, main_menu_markup())
     return ConversationHandler.END
@@ -306,6 +348,7 @@ conv = ConversationHandler(
     entry_points=[
         CallbackQueryHandler(add_start, pattern=r"^acc_add:"),
         CallbackQueryHandler(edit_field_start, pattern=r"^acc_edit:"),
+        CallbackQueryHandler(add_platform_start, pattern=r"^menu:add_platform$"),
         CallbackQueryHandler(account_item_view, pattern=r"^acc_item:"),
         CallbackQueryHandler(account_sync, pattern=r"^acc_sync:"),
         CallbackQueryHandler(account_delete, pattern=r"^acc_del:"),
@@ -318,6 +361,10 @@ conv = ConversationHandler(
         WAIT_FIELD_UPDATE: [
             CallbackQueryHandler(cancel_to_platform, pattern=r"^(acc_item:|acc:|menu:)"),
             MessageHandler(filters.TEXT & ~filters.COMMAND, edit_field_save),
+        ],
+        WAIT_NEW_PLATFORM: [
+            CallbackQueryHandler(cancel_to_platform, pattern=r"^menu:"),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, add_platform_save),
         ],
     },
     fallbacks=[
@@ -333,7 +380,6 @@ conv = ConversationHandler(
 # =====================================================================
 
 def get_available_targets() -> list[dict]:
-    """storage.py থেকে সেভ করা সব প্ল্যাটফর্ম ও চ্যানেল/পেজ নিয়ে আসে।"""
     accs = storage.get_accounts()
     targets = []
     for plat, channels in accs.items():
@@ -349,7 +395,6 @@ def get_available_targets() -> list[dict]:
 
 
 def build_upload_platform_keyboard(selected_ids: list[str], is_open: bool) -> list[list[InlineKeyboardButton]]:
-    """ড্রপডাউন অ্যারো (▼/▲) এবং টিকবক্স (✅/⬜) সহ প্ল্যাটফর্ম সিলেকশন বাটন তৈরি করে।"""
     arrow = "▲" if is_open else "▼"
     count = len(selected_ids)
     rows = [[
@@ -378,7 +423,6 @@ def build_upload_platform_keyboard(selected_ids: list[str], is_open: bool) -> li
 
 
 async def toggle_upload_platform(context: ContextTypes.DEFAULT_TYPE, action: str) -> None:
-    """টিকবক্স ও ড্রপডাউন বাটনের ক্লিক হ্যান্ডেল করে।"""
     data = context.user_data.get("upload_session")
     if not data:
         return
