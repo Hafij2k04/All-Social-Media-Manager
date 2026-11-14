@@ -303,7 +303,7 @@ def get_upload_handler() -> ConversationHandler:
         entry_points=[CallbackQueryHandler(upload_home, pattern="^menu:upload$")],
         states={
             WAIT_VIDEO: [
-                MessageHandler(filters.VIDEO | filters.Document.VIDEO, recive_video),
+                MessageHandler(filters.VIDEO | filters.Document.VIDEO, receive_video),
                 CallbackQueryHandler(handle_dashboard_action, pattern="^menu:main$"),
             ],
             UPLOAD_DASHBOARD: [
