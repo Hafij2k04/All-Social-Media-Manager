@@ -61,7 +61,7 @@ def main():
     app.add_handler(CallbackQueryHandler(ai_connectors.provider_view, pattern=r"^ai:"))
     app.add_handler(CallbackQueryHandler(ai_connectors.set_active, pattern=r"^ai_active:"))
     app.add_handler(CallbackQueryHandler(ai_connectors.test_ai, pattern=r"^ai_test:"))
-    app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, upload.on_video))
+    app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, upload.receive_video))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_connectors.chat))
     app.add_error_handler(on_error)
 
