@@ -299,6 +299,43 @@ async def receive_thumb_input(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def receive_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     pass
+    # এই নতুন ফাংশনটি get_upload_handler-এর ঠিক ওপরে যোগ করুন
+async def cancel_upload_on_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data.pop("editing_field", None)
+    await update.message.reply_text(
+        MAIN_TEXT,
+        reply_markup=main_menu_markup(),
+        parse_mode="Markdown"
+    )
+    return ConversationHandler.END
+
+
+def get_upload_handler() -> ConversationHandler:
+    return ConversationHandler(
+        entry_points=[CallbackQueryHandler(upload_home, pattern="^menu:upload$")],
+        states={
+            WAIT_VIDEO: [
+                MessageHandler(filters.VIDEO | filters.Document.VIDEO, receive_video),
+                CallbackQueryHandler(handle_dashboard_action, pattern="^menu:main$"),
+            ],
+            UPLOAD_DASHBOARD: [
+                CallbackQueryHandler(handle_dashboard_action, pattern="^(up_|menu:main|account:)"),
+            ],
+            WAIT_TEXT_INPUT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_text_input),
+            ],
+            WAIT_THUMB_INPUT: [
+                MessageHandler(filters.PHOTO | filters.Document.IMAGE, receive_thumb_input),
+            ],
+        },
+        fallbacks=[
+            # নিচের লাইনটি পরিবর্তন করে এভাবে দিন:
+            CommandHandler("start", cancel_upload_on_start),
+            CallbackQueryHandler(handle_dashboard_action, pattern="^menu:main$"),
+        ],
+        allow_reentry=True,
+    )
+
 def get_upload_handler() -> ConversationHandler:
     return ConversationHandler(
         entry_points=[CallbackQueryHandler(upload_home, pattern="^menu:upload$")],
