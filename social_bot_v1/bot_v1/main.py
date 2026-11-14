@@ -52,6 +52,7 @@ def main():
     app.add_handler(TypeHandler(Update, auth_gate), group=-1)
 
     # কথোপকথন (টেক্সট ইনপুট) আগে, তারপর বাটন, সবশেষে সাধারণ চ্যাট
+    app.add_handler(upload.get_upload_handler())
     app.add_handler(platforms.conv)
     app.add_handler(ai_connectors.conv)
     app.add_handler(CommandHandler("start", menu.start))
