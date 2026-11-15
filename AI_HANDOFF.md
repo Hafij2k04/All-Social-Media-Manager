@@ -83,3 +83,17 @@ Before changing code:
 - This handoff file is intended to transfer project context. The receiving assistant must still inspect the latest repository state before editing.
 - Multiple assistants should not edit the same files concurrently. Use one assistant at a time or coordinate separate files and review the combined changes.
 - External services (Google Flow, Gemini, Canva, YouTube, Meta, TikTok, etc.) require their own supported official integrations, permissions, quotas, and credentials. A connected GitHub account alone does not grant those capabilities.
+
+
+### Platform-specific account credential setup (2026-11-15)
+- `handlers/platforms.py` now uses `PLATFORM_ACCOUNT_FIELDS` as the per-platform credential-field registry.
+- YouTube shows Channel ID/Handle, API Key (public data only), and OAuth 2.0 token (private data/upload).
+- Facebook shows Page ID and Page Access Token.
+- Instagram shows Professional Account ID and Instagram/Meta Access Token.
+- TikTok shows profile username, separate OAuth Open ID, and user access token. A profile handle is not the TikTok Open ID.
+- LinkedIn shows Person/Organization URN and OAuth access token.
+- Unknown/custom platforms do not get misleading generic API-key/token fields. Add their correct schema to `PLATFORM_ACCOUNT_FIELDS` before connecting them.
+- Existing account records and legacy Facebook token storage are preserved.
+- This is a credential UI/schema improvement, not completed OAuth authorization flows. Tokens are still entered manually; real OAuth connect/callback, refresh-token lifecycle, and platform API integrations remain future work.
+- Official auth distinction: YouTube API keys are for public data; OAuth 2.0 is required for private data and upload. TikTok Content Posting requires user OAuth, approved `video.publish` scope, and Open ID. Meta Page/Instagram access depends on the relevant Page/Professional account permissions. LinkedIn uses OAuth 2.0 and granted product scopes.
+- Commits: `f2d2b4e` (platform-specific fields), `2596410` (labels and setup guidance), `58efda2` (TikTok Open ID separation), `e0f9e8f` (TikTok prompt correction).
