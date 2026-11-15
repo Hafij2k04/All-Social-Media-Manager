@@ -1,21 +1,114 @@
 MESSAGES = {
-    "en": {
-        "welcome": "Welcome!",
-        "select_lang": "Please select a language."
-    },
     "bn": {
-        "welcome": "স্বাগতম!",
-        "select_lang": "অনুগ্রহ করে একটি ভাষা নির্বাচন করুন।"
+        "welcome": "🏠 সোশ্যাল মিডিয়া ম্যানেজার",
+        "menu_accounts": "📺 অ্যাকাউন্ট",
+        "menu_ai": "🤖 AI কানেক্টর",
+        "menu_upload": "⬆️ ভিডিও আপলোড",
+        "menu_analyze": "📊 অ্যানালাইসিস ও আইডিয়া",
+        "menu_status": "⚙️ স্ট্যাটাস",
+        "menu_language": "🌐 ভাষা",
+        "language_title": "🌐 তোমার পছন্দের ভাষা নির্বাচন করো:",
+        "language_saved": "✅ ভাষা বাংলা করা হয়েছে।",
+        "back": "🔙 মেইন মেনু",
     },
-    "ar": {
-        "welcome": "أهلاً بك!",
-        "select_lang": "يرجى تحديد لغة."
+    "en": {
+        "welcome": "🏠 Social Media Manager",
+        "menu_accounts": "📺 Accounts",
+        "menu_ai": "🤖 AI Connectors",
+        "menu_upload": "⬆️ Upload Video",
+        "menu_analyze": "📊 Analysis & Ideas",
+        "menu_status": "⚙️ Status",
+        "menu_language": "🌐 Language",
+        "language_title": "🌐 Select your preferred language:",
+        "language_saved": "✅ Language changed to English.",
+        "back": "🔙 Main Menu",
     },
     "hi": {
-        "welcome": "स्वागत है!",
-        "select_lang": "कृपया एक भाषा चुनें।"
-    }
+        "welcome": "🏠 सोशल मीडिया मैनेजर",
+        "menu_accounts": "📺 अकाउंट",
+        "menu_ai": "🤖 AI कनेक्टर",
+        "menu_upload": "⬆️ वीडियो अपलोड",
+        "menu_analyze": "📊 विश्लेषण और सुझाव",
+        "menu_status": "⚙️ स्थिति",
+        "menu_language": "🌐 भाषा",
+        "language_title": "🌐 अपनी पसंदीदा भाषा चुनें:",
+        "language_saved": "✅ भाषा हिंदी कर दी गई है।",
+        "back": "🔙 मुख्य मेनू",
+    },
+    "ur": {
+        "welcome": "🏠 سوشل میڈیا مینیجر",
+        "menu_accounts": "📺 اکاؤنٹس",
+        "menu_ai": "🤖 AI کنیکٹرز",
+        "menu_upload": "⬆️ ویڈیو اپ لوڈ",
+        "menu_analyze": "📊 تجزیہ اور آئیڈیاز",
+        "menu_status": "⚙️ اسٹیٹس",
+        "menu_language": "🌐 زبان",
+        "language_title": "🌐 اپنی پسندیدہ زبان منتخب کریں:",
+        "language_saved": "✅ زبان اردو کر دی گئی ہے۔",
+        "back": "🔙 مین مینو",
+    },
+    "zh": {
+        "welcome": "🏠 社交媒体管理器",
+        "menu_accounts": "📺 账号",
+        "menu_ai": "🤖 AI 连接器",
+        "menu_upload": "⬆️ 上传视频",
+        "menu_analyze": "📊 分析与创意",
+        "menu_status": "⚙️ 状态",
+        "menu_language": "🌐 语言",
+        "language_title": "🌐 请选择您的首选语言：",
+        "language_saved": "✅ 语言已更改为中文。",
+        "back": "🔙 主菜单",
+    },
+    "ar": {
+        "welcome": "🏠 مدير وسائل التواصل الاجتماعي",
+        "menu_accounts": "📺 الحسابات",
+        "menu_ai": "🤖 موصلات الذكاء الاصطناعي",
+        "menu_upload": "⬆️ رفع فيديو",
+        "menu_analyze": "📊 التحليل والأفكار",
+        "menu_status": "⚙️ الحالة",
+        "menu_language": "🌐 اللغة",
+        "language_title": "🌐 اختر لغتك المفضلة:",
+        "language_saved": "✅ تم تغيير اللغة إلى العربية.",
+        "back": "🔙 القائمة الرئيسية",
+    },
+    "ne": {
+        "welcome": "🏠 सामाजिक सञ्जाल प्रबन्धक",
+        "menu_accounts": "📺 खाताहरू",
+        "menu_ai": "🤖 AI कनेक्टरहरू",
+        "menu_upload": "⬆️ भिडियो अपलोड",
+        "menu_analyze": "📊 विश्लेषण र विचारहरू",
+        "menu_status": "⚙️ स्थिति",
+        "menu_language": "🌐 भाषा",
+        "language_title": "🌐 आफ्नो मनपर्ने भाषा छान्नुहोस्:",
+        "language_saved": "✅ भाषा नेपालीमा परिवर्तन भयो।",
+        "back": "🔙 मुख्य मेनु",
+    },
+    "as": {
+        "welcome": "🏠 ছ’চিয়েল মিডিয়া মেনেজাৰ",
+        "menu_accounts": "📺 একাউণ্ট",
+        "menu_ai": "🤖 AI কানেক্টৰ",
+        "menu_upload": "⬆️ ভিডিঅ’ আপল’ড",
+        "menu_analyze": "📊 বিশ্লেষণ আৰু আইডিয়া",
+        "menu_status": "⚙️ ষ্টেটাছ",
+        "menu_language": "🌐 ভাষা",
+        "language_title": "🌐 আপোনাৰ পছন্দৰ ভাষা বাছনি কৰক:",
+        "language_saved": "✅ ভাষা অসমীয়ালৈ সলনি কৰা হৈছে।",
+        "back": "🔙 মূল মেনু",
+    },
 }
 
+LANGUAGE_NAMES = {
+    "bn": "🇧🇩 বাংলা",
+    "en": "🇺🇸 English",
+    "hi": "🇮🇳 हिन्दी",
+    "ur": "🇵🇰 اردو",
+    "zh": "🇨🇳 中文",
+    "ar": "🇸🇦 العربية",
+    "ne": "🇳🇵 नेपाली",
+    "as": "🇮🇳 অসমীয়া",
+}
+
+
 def get_text(lang_code, key):
-    return MESSAGES.get(lang_code, MESSAGES["en"]).get(key, MESSAGES["en"][key])
+    lang = MESSAGES.get(lang_code, MESSAGES["bn"])
+    return lang.get(key, MESSAGES["bn"].get(key, key))
