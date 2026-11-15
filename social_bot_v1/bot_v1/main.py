@@ -56,7 +56,7 @@ def main():
     app.add_handler(platforms.conv)
     app.add_handler(ai_connectors.conv)
     app.add_handler(CommandHandler("start", menu.start))
-    app.add_handler(CallbackQueryHandler(menu.menu_router, pattern=r"^menu:"))
+    app.add_handler(CallbackQueryHandler(menu.menu_router, pattern=r"^(menu:|lang:)"))
     app.add_handler(CallbackQueryHandler(platforms.platform_view, pattern=r"^acc:"))
     app.add_handler(CallbackQueryHandler(ai_connectors.provider_view, pattern=r"^ai:"))
     app.add_handler(CallbackQueryHandler(ai_connectors.set_active, pattern=r"^ai_active:"))
