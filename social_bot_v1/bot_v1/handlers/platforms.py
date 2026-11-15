@@ -269,7 +269,18 @@ async def account_sync(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if p.lower() == "youtube":
         target = info.get("channel_id") or info.get("link") or name
-        res, err = fetch_youtube_stats(target, info.get("api_key", ""))
+        try:
+            access_token = oauth.get_valid_youtube_access_token(p, name)
+        except Exception:
+            logger.exception("Could not load or refresh YouTube OAuth token")
+            await _render_channel_dashboard(
+                update, p, name,
+                notice="⚠️ Google OAuth token পড়া বা refresh করা যায়নি। Render-এর TOKEN_ENCRYPTION_KEY পরিবর্তন হয়েছে কি না যাচাই করো।"
+            )
+            return
+        res, err = fetch_youtube_stats(
+            target, info.get("api_key", ""), access_token=access_token
+        )
         if err:
             await _render_channel_dashboard(update, p, name, notice=err)
             return
