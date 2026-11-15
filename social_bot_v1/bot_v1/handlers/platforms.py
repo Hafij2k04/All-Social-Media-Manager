@@ -130,15 +130,18 @@ async def platform_view(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def _normalize_info(info, platform: str = "") -> dict:
     if isinstance(info, dict):
+        # Preserve profile and future account metadata while normalizing known fields.
+        normalized = dict(info)
         link = info.get("link", "লিংক নেই")
         ch_id = info.get("channel_id", "") or _auto_extract_id(platform, link)
-        return {
+        normalized.update({
             "link": link,
             "channel_id": ch_id,
             "api_key": info.get("api_key", ""),
             "oauth_token": info.get("oauth_token", None),
             "stats": info.get("stats", {"subscribers": "0", "views": "0", "videos": "0"}),
-        }
+        })
+        return normalized
     link = str(info)
     return {
         "link": link,
