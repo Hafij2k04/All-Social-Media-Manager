@@ -8,7 +8,8 @@ _DEFAULT = {
     "ai_keys": {},
     "active_ai": None,
     "custom_platforms": [],
-    "user_languages": {}
+    "user_languages": {},
+    "analysis_selections": {}
 }
 
 
@@ -161,3 +162,33 @@ def set_user_lang(user_id, lang_code):
     d.setdefault("user_languages", {})[str(user_id)] = lang_code
     _save(d)
     return True
+
+
+# ---- Analysis & Ideas: per-user multi-account selection ----
+def get_analysis_selection(user_id):
+    """Return the user's saved Analysis & Ideas account selection."""
+    return _load().get("analysis_selections", {}).get(str(user_id), [])
+
+
+def set_analysis_selection(user_id, targets):
+    """Persist selected platform/account pairs for the Analysis & Ideas workflow."""
+    clean = []
+    seen = set()
+    accounts = get_accounts()
+    for item in targets:
+        if not isinstance(item, dict):
+            continue
+        platform = str(item.get("platform", "")).strip()
+        name = str(item.get("name", "")).strip()
+        if not platform or not name or name not in accounts.get(platform, {}):
+            continue
+        key = (platform, name)
+        if key in seen:
+            continue
+        seen.add(key)
+        clean.append({"platform": platform, "name": name})
+
+    d = _load()
+    d.setdefault("analysis_selections", {})[str(user_id)] = clean
+    _save(d)
+    return clean
