@@ -373,7 +373,7 @@ async def edit_field_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "youtube": f"🆔 **{name}-এর YouTube Channel ID বা @Handle দাও:**\nউদাহরণ: `UCxxxxxxxxxxxxxxxxxxxxxx` অথবা `@channelname`",
             "facebook": f"🆔 **{name}-এর Facebook Page ID দাও:**",
             "instagram": f"🆔 **{name}-এর Instagram Professional Account ID দাও:**",
-            "tiktok": f"👤 **{name}-এর TikTok Username / Profile link দাও:** (যেমন: @username)
+            "tiktok": f"👤 **{name}-এর TikTok Username / Profile link দাও:** (যেমন: @username)",
             "linkedin": f"🆔 **{name}-এর LinkedIn Person অথবা Organization URN দাও:**",
         }
         msg = prompts.get(low, f"🆔 **{name}-এর platform account ID দাও:**")
