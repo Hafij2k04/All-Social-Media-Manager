@@ -346,6 +346,7 @@ async def add_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "channel_id": ch_id,
             "api_key": "",
             "oauth_token": None,
+            "open_id": "",
             "stats": {"subscribers": "0", "views": "0", "videos": "0"},
         },
     )
@@ -372,7 +373,7 @@ async def edit_field_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "youtube": f"🆔 **{name}-এর YouTube Channel ID বা @Handle দাও:**\nউদাহরণ: `UCxxxxxxxxxxxxxxxxxxxxxx` অথবা `@channelname`",
             "facebook": f"🆔 **{name}-এর Facebook Page ID দাও:**",
             "instagram": f"🆔 **{name}-এর Instagram Professional Account ID দাও:**",
-            "tiktok": f"🆔 **{name}-এর TikTok Open ID দাও:** (OAuth authorization থেকে পাওয়া যায়)",
+            "tiktok": f"👤 **{name}-এর TikTok Username / Profile link দাও:** (যেমন: @username)
             "linkedin": f"🆔 **{name}-এর LinkedIn Person অথবা Organization URN দাও:**",
         }
         msg = prompts.get(low, f"🆔 **{name}-এর platform account ID দাও:**")
