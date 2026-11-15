@@ -48,9 +48,7 @@ async def status(update, context):
         for info in accounts.values():
             if isinstance(info, dict) and (info.get("oauth_token") or info.get("api_key")):
                 with_credentials += 1
-        platform_lines.append(
-            f"• {platform}: {count} (credential saved: {with_credentials})"
-        )
+        platform_lines.append((platform, count, with_credentials))
 
     # These indicators report saved configuration, not live API verification.
     translations = {
@@ -188,8 +186,8 @@ async def status(update, context):
         f"{t['platforms']}:",
     ]
     lines.extend(
-        [f"  • {line.split(': ', 1)[0]}: {line.split(': ', 1)[1]} ({t['credential']})"
-         for line in platform_lines]
+        [f"  • {platform}: {count} ({t['credential']}: {with_credentials})"
+         for platform, count, with_credentials in platform_lines]
         if platform_lines else [f"  • {t['none']}"]
     )
     lines.extend([
