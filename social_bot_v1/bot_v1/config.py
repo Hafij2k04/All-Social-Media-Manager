@@ -28,4 +28,4 @@ AI_MODELS = {
 # YouTube OAuth 2.0 credentials (set as Render Environment Variables).
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "")
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "https://all-social-media-manager.onrender.com/oauth/youtube/callback")
