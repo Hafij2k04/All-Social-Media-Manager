@@ -92,3 +92,26 @@ def get_valid_youtube_access_token(platform: str, account_name: str) -> str:
         __import__("storage").save_youtube_oauth(platform, account_name, refreshed)
         access_token = refreshed["access_token"]
     return access_token
+
+
+
+def fetch_authorized_youtube_channel(access_token: str) -> dict:
+    """Return the channel belonging to the Google account that approved OAuth."""
+    url = "https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true"
+    request = urllib.request.Request(
+        url,
+        headers={"Authorization": f"Bearer {access_token}"},
+        method="GET",
+    )
+    with urllib.request.urlopen(request, timeout=25) as response:
+        data = json.loads(response.read().decode("utf-8"))
+    items = data.get("items") or []
+    if not items:
+        raise RuntimeError("No YouTube channel was found for the authorized Google account.")
+    item = items[0]
+    snippet = item.get("snippet", {})
+    return {
+        "channel_id": item.get("id", ""),
+        "channel_title": snippet.get("title", ""),
+        "channel_custom_url": snippet.get("customUrl", ""),
+    }
