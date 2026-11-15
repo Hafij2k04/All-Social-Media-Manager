@@ -53,3 +53,42 @@ def exchange_authorization_code(code: str) -> dict:
         raise RuntimeError("Google did not return an access token.")
     data["expires_at"] = int(time.time()) + int(data.get("expires_in", 3600))
     return data
+
+
+
+def refresh_access_token(refresh_token: str) -> dict:
+    if not config.GOOGLE_CLIENT_ID or not config.GOOGLE_CLIENT_SECRET:
+        raise RuntimeError("Google OAuth client credentials are not configured.")
+    payload = urllib.parse.urlencode({
+        "client_id": config.GOOGLE_CLIENT_ID,
+        "client_secret": config.GOOGLE_CLIENT_SECRET,
+        "refresh_token": refresh_token,
+        "grant_type": "refresh_token",
+    }).encode("utf-8")
+    request = urllib.request.Request(
+        GOOGLE_TOKEN_URL,
+        data=payload,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=25) as response:
+        data = json.loads(response.read().decode("utf-8"))
+    if not data.get("access_token"):
+        raise RuntimeError("Google did not return a refreshed access token.")
+    data["expires_at"] = int(time.time()) + int(data.get("expires_in", 3600))
+    return data
+
+
+def get_valid_youtube_access_token(platform: str, account_name: str) -> str:
+    credentials = __import__("storage").get_youtube_oauth(platform, account_name)
+    access_token = credentials.get("access_token", "")
+    expires_at = credentials.get("expires_at", 0)
+    refresh_token = credentials.get("refresh_token", "")
+    if not access_token:
+        return ""
+    if expires_at and expires_at <= int(time.time()) + 60 and refresh_token:
+        refreshed = refresh_access_token(refresh_token)
+        refreshed.setdefault("refresh_token", refresh_token)
+        __import__("storage").save_youtube_oauth(platform, account_name, refreshed)
+        access_token = refreshed["access_token"]
+    return access_token
