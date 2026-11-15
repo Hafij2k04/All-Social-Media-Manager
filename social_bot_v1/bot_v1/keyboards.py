@@ -1,6 +1,6 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from lang import get_text
+from lang import MENU_HINTS, get_text
 
 
 def main_menu_markup(lang_code="bn"):
