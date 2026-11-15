@@ -156,7 +156,7 @@ PLATFORM_ACCOUNT_FIELDS = {
     "youtube": [("channel_id","🆔 Set Channel ID / @Handle"),("api_key","🔑 Set YouTube API Key (public data)"),("oauth_token","🔐 Set YouTube OAuth Token (upload/private data)")],
     "facebook": [("channel_id","🆔 Set Facebook Page ID"),("oauth_token","🔐 Set Facebook Page Access Token")],
     "instagram": [("channel_id","🆔 Set Instagram Professional Account ID"),("oauth_token","🔐 Set Instagram Access Token")],
-    "tiktok": [("channel_id","🆔 Set TikTok Open ID"),("oauth_token","🔐 Set TikTok User Access Token")],
+    "tiktok": [("channel_id","👤 Set TikTok Username / Profile"),("open_id","🆔 Set TikTok Open ID"),("oauth_token","🔐 Set TikTok User Access Token")],
     "linkedin": [("channel_id","🆔 Set LinkedIn Person / Organization URN"),("oauth_token","🔐 Set LinkedIn Access Token")],
 }
 
@@ -197,7 +197,7 @@ async def _render_channel_dashboard(update: Update, p: str, name: str, notice: s
             "youtube": {"channel_id":"Channel ID / Handle","api_key":"YouTube API Key (public data)","oauth_token":"YouTube OAuth 2.0 Token"},
             "facebook": {"channel_id":"Facebook Page ID","oauth_token":"Facebook Page Access Token"},
             "instagram": {"channel_id":"Instagram Professional Account ID","oauth_token":"Instagram Access Token"},
-            "tiktok": {"channel_id":"TikTok Open ID","oauth_token":"TikTok User Access Token"},
+            "tiktok": {"channel_id":"TikTok Username / Profile","open_id":"TikTok Open ID","oauth_token":"TikTok User Access Token"},
             "linkedin": {"channel_id":"LinkedIn Person / Organization URN","oauth_token":"LinkedIn OAuth Access Token"},
         }
         label = field_labels.get(low, {}).get(field, field.replace("_", " ").title())
@@ -376,6 +376,8 @@ async def edit_field_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "linkedin": f"🆔 **{name}-এর LinkedIn Person অথবা Organization URN দাও:**",
         }
         msg = prompts.get(low, f"🆔 **{name}-এর platform account ID দাও:**")
+    elif field == "open_id" and low == "tiktok":
+        msg = f"🆔 **{name}-এর TikTok Open ID দাও:**\\nএটি TikTok OAuth user authorization-এর response থেকে পাওয়া যায়। Profile username (@name) Open ID নয়।"
     elif field == "api_key" and low == "youtube":
         msg = (f"🔑 **{name}-এর YouTube Data API v3 Key দাও:**\n"
                "এটি শুধু public channel/video data পড়ার জন্য। ভিডিও upload বা private data access-এর জন্য OAuth 2.0 প্রয়োজন।\n"
