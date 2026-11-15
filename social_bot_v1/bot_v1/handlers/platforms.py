@@ -1,5 +1,11 @@
 import logging
 import re
+import secrets
+import time
+import os
+
+import config
+import oauth
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     CallbackQueryHandler,
@@ -190,6 +196,11 @@ async def _render_channel_dashboard(update: Update, p: str, name: str, notice: s
     rows = []
     for field, button in _platform_fields(p):
         value = info.get(field)
+        if field == "oauth_token" and low == "youtube":
+            try:
+                value = storage.get_youtube_oauth(p, name).get("access_token")
+            except Exception:
+                value = None
         if field == "oauth_token" and low == "facebook":
             value = value or info.get("api_key")  # legacy Facebook token compatibility
         status = f"✅ {t[1]}" if value else f"⚪ {t[2]}"
@@ -204,6 +215,7 @@ async def _render_channel_dashboard(update: Update, p: str, name: str, notice: s
         text += f"• **{label}:** {status}\n"
         rows.append([InlineKeyboardButton(button, callback_data=f"acc_edit:{p}:{name}:{field}")])
     if low == "youtube":
+        rows.insert(0, [InlineKeyboardButton("🔗 Connect YouTube with Google", callback_data=f"yt_oauth:{name}")])
         text += f"\n📈 **{t[7]}:**\n• {t[9]}: **{stats.get('subscribers','0')}**\n• {t[10]}: **{stats.get('views','0')}**\n• {t[11]}: **{stats.get('videos','0')}**\n"
         rows.insert(0,[InlineKeyboardButton("🔄 Sync YouTube Stats",callback_data=f"acc_sync:{p}:{name}")])
     elif low == "facebook":
@@ -217,6 +229,29 @@ async def _render_channel_dashboard(update: Update, p: str, name: str, notice: s
     rows.append([InlineKeyboardButton("🔙 "+t[16]+f" {p}",callback_data=f"acc:{p}")])
     await show(update,text,InlineKeyboardMarkup(rows))
 
+
+async def youtube_oauth_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    name = update.callback_query.data.split(":", 1)[1]
+    platform = "YouTube"
+    accounts = storage.get_accounts().get(platform, {})
+    if name not in accounts:
+        await _render_platform(update, platform)
+        return ConversationHandler.END
+    required = (config.GOOGLE_CLIENT_ID, config.GOOGLE_CLIENT_SECRET, config.GOOGLE_REDIRECT_URI, os.environ.get("TOKEN_ENCRYPTION_KEY", ""))
+    if not all(required):
+        await show(update, "⚠️ YouTube OAuth এখনো কনফিগার করা হয়নি। Render Environment Variables-এ GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI এবং TOKEN_ENCRYPTION_KEY সেট করতে হবে।", InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Account Dashboard", callback_data=f"acc_item:{platform}:{name}")]]))
+        return ConversationHandler.END
+    state = secrets.token_urlsafe(32)
+    storage.create_oauth_state(state, {"platform": platform, "name": name, "user_id": update.effective_user.id}, int(time.time()) + 600)
+    try:
+        auth_url = oauth.build_authorization_url(state)
+    except Exception as exc:
+        logger.exception("Could not create YouTube OAuth URL")
+        await _render_channel_dashboard(update, platform, name, notice=f"OAuth setup error: {exc}")
+        return ConversationHandler.END
+    keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("Continue with Google", url=auth_url)], [InlineKeyboardButton("🔙 Account Dashboard", callback_data=f"acc_item:{platform}:{name}")]])
+    await show(update, f"🔐 **Connect {name} with Google**\n\nContinue with Google, choose the correct YouTube channel owner account, and approve the requested YouTube permissions. After approval, return to Telegram.", keyboard)
+    return ConversationHandler.END
 
 async def account_item_view(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _, p, name = update.callback_query.data.split(":", 2)
@@ -453,6 +488,7 @@ conv = ConversationHandler(
         CallbackQueryHandler(edit_field_start, pattern=r"^acc_edit:"),
         CallbackQueryHandler(add_platform_start, pattern=r"^menu:add_platform$"),
         CallbackQueryHandler(account_item_view, pattern=r"^acc_item:"),
+        CallbackQueryHandler(youtube_oauth_start, pattern=r"^yt_oauth:"),
         CallbackQueryHandler(account_sync, pattern=r"^acc_sync:"),
         CallbackQueryHandler(account_delete, pattern=r"^acc_del:"),
     ],
