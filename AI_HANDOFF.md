@@ -115,3 +115,14 @@ Implemented the first platform OAuth flow for YouTube:
 - In Google Cloud Console, configure an OAuth client for a Web application, add the exact callback URL to Authorized redirect URIs, enable YouTube Data API v3, and configure the OAuth consent screen/test users as required.
 - The app has not been tested against a real Google OAuth client and has not been deployed. The user must configure the four environment variables and redeploy before the Connect button can complete a real connection.
 - Existing manually entered tokens remain supported for compatibility; new OAuth tokens are encrypted.
+
+
+### User's Render OAuth callback URL (confirmed 2026-11-16)
+The user's Render public service URL is `https://all-social-media-manager.onrender.com`.
+The exact Google Authorized redirect URI and Render `GOOGLE_REDIRECT_URI` value is:
+`https://all-social-media-manager.onrender.com/oauth/youtube/callback`
+The same value is now the code default in `config.py`; set it explicitly in Render as well to avoid ambiguity.
+The callback now calls YouTube Data API `channels.list?part=snippet&mine=true` using the authorized access token and saves the returned channel ID/title/custom URL with the encrypted credentials. This validates which channel the Google account authorized.
+To generate the Fernet-compatible key on the user's Windows PC without installing any package, run:
+`python -c "import secrets,base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"`
+Copy the one-line output into Render Environment Variables as `TOKEN_ENCRYPTION_KEY`. Keep it private and never change it after OAuth tokens have been encrypted, or existing saved tokens will become unreadable.
