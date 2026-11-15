@@ -258,6 +258,13 @@ def save_youtube_oauth(platform, name, token_data):
     account["oauth_expires_at"] = int(token_data.get("expires_at", 0))
     account["oauth_scope"] = token_data.get("scope", "")
     account["oauth_token_type"] = token_data.get("token_type", "Bearer")
+    if token_data.get("channel_id"):
+        account["channel_id"] = token_data["channel_id"]
+        account["link"] = "https://www.youtube.com/channel/" + token_data["channel_id"]
+    if token_data.get("channel_title"):
+        account["channel_title"] = token_data["channel_title"]
+    if token_data.get("channel_custom_url"):
+        account["channel_custom_url"] = token_data["channel_custom_url"]
     account.pop("oauth_token", None)
     d["accounts"][platform][name] = account
     _save(d)
