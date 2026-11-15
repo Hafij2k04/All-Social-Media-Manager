@@ -15,7 +15,7 @@ def main_menu_markup(lang_code="bn"):
 
 
 def get_main_text(lang_code="bn"):
-    return get_text(lang_code, "welcome") + "\\n" + MENU_HINTS.get(lang_code, MENU_HINTS["bn"])
+    return get_text(lang_code, "welcome") + "\n" + MENU_HINTS.get(lang_code, MENU_HINTS["bn"])
 
 
 # Backward-compatible default for existing imports.
