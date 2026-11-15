@@ -36,10 +36,10 @@ def extract_channel_identifier(link_or_id: str):
     return None, None
 
 
-def fetch_youtube_stats(channel_id_or_link: str, api_key: str):
+def fetch_youtube_stats(channel_id_or_link: str, api_key: str = "", access_token: str = ""):
     """YouTube Data API v3 ব্যবহার করে চ্যানেলের রিয়েল-টাইম স্ট্যাটাস নিয়ে আসে।"""
-    if not api_key:
-        return None, "⚠️ API Key সেট করা নেই। রিয়েল-টাইম ডেটা আনতে প্রথমে '🔑 Set API Key' বাটনে ক্লিক করে API Key যুক্ত করুন।"
+    if not api_key and not access_token:
+        return None, "⚠️ YouTube API Key অথবা Google OAuth connection প্রয়োজন। Account Dashboard থেকে Connect YouTube with Google চাপুন।"
 
     kind, val = extract_channel_identifier(channel_id_or_link)
     if not kind:
@@ -48,12 +48,16 @@ def fetch_youtube_stats(channel_id_or_link: str, api_key: str):
     params = {
         "part": "snippet,statistics",
         kind: val,
-        "key": api_key.strip()
     }
+    if not access_token:
+        params["key"] = api_key.strip()
     url = "https://www.googleapis.com/youtube/v3/channels?" + urllib.parse.urlencode(params)
 
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        headers = {"User-Agent": "Mozilla/5.0"}
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+        req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
 
