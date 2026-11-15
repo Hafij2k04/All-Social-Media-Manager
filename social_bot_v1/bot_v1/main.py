@@ -8,7 +8,7 @@ from telegram.ext import (ApplicationBuilder, ApplicationHandlerStop, CallbackQu
                           CommandHandler, MessageHandler, TypeHandler, filters)
 
 import config
-from handlers import ai_connectors, menu, platforms, upload
+from handlers import ai_connectors, automation, menu, platforms, upload
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s: %(message)s", level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)   # টোকেন লগে না আসার জন্য
@@ -56,6 +56,7 @@ def main():
     app.add_handler(platforms.conv)
     app.add_handler(ai_connectors.conv)
     app.add_handler(CommandHandler("start", menu.start))
+    app.add_handler(CallbackQueryHandler(automation.analysis_callback, pattern=r"^an:"))
     app.add_handler(CallbackQueryHandler(menu.menu_router, pattern=r"^(menu:|lang:)"))
     app.add_handler(CallbackQueryHandler(platforms.platform_view, pattern=r"^acc:"))
     app.add_handler(CallbackQueryHandler(ai_connectors.provider_view, pattern=r"^ai:"))
