@@ -190,8 +190,17 @@ async def _render_channel_dashboard(update: Update, p: str, name: str, notice: s
     rows = []
     for field, button in _platform_fields(p):
         value = info.get(field)
+        if field == "oauth_token" and low == "facebook":
+            value = value or info.get("api_key")  # legacy Facebook token compatibility
         status = f"✅ {t[1]}" if value else f"⚪ {t[2]}"
-        label = {"channel_id":"Platform Account ID","api_key":"YouTube API Key","oauth_token":"OAuth / Access Token"}[field]
+        field_labels = {
+            "youtube": {"channel_id":"Channel ID / Handle","api_key":"YouTube API Key (public data)","oauth_token":"YouTube OAuth 2.0 Token"},
+            "facebook": {"channel_id":"Facebook Page ID","oauth_token":"Facebook Page Access Token"},
+            "instagram": {"channel_id":"Instagram Professional Account ID","oauth_token":"Instagram Access Token"},
+            "tiktok": {"channel_id":"TikTok Open ID","oauth_token":"TikTok User Access Token"},
+            "linkedin": {"channel_id":"LinkedIn Person / Organization URN","oauth_token":"LinkedIn OAuth Access Token"},
+        }
+        label = field_labels.get(low, {}).get(field, field.replace("_", " ").title())
         text += f"• **{label}:** {status}\n"
         rows.append([InlineKeyboardButton(button, callback_data=f"acc_edit:{p}:{name}:{field}")])
     if low == "youtube":
@@ -341,12 +350,14 @@ async def add_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
         },
     )
 
-    if p.lower() == "facebook":
-        hint = "✅ পেজ যুক্ত হয়েছে! এবার নিচ থেকে **🔐 Set Page Access Token** সেট করো।"
-    elif p.lower() == "youtube":
-        hint = "✅ চ্যানেল যুক্ত হয়েছে! এবার **🔑 Set YouTube API Key** দিলে লাইভ ভিউ/সাবস্ক্রাইবার দেখতে পাবে।"
-    else:
-        hint = "✅ অ্যাকাউন্ট যুক্ত হয়েছে! এবার নিচ থেকে প্রয়োজনীয় টোকেন সেট করো।"
+    hints = {
+        "youtube": "✅ YouTube চ্যানেল যুক্ত হয়েছে। Public statistics-এর জন্য API Key এবং ভিডিও upload/private data access-এর জন্য OAuth 2.0 Token আলাদাভাবে সেট করো।",
+        "facebook": "✅ Facebook Page যুক্ত হয়েছে। Page ID ও Page Access Token সেট করো; token-এ প্রয়োজনীয় Page permissions থাকতে হবে।",
+        "instagram": "✅ Instagram account যুক্ত হয়েছে। Professional account ID ও অনুমোদিত Instagram/Meta Access Token সেট করো।",
+        "tiktok": "✅ TikTok account যুক্ত হয়েছে। TikTok OAuth থেকে পাওয়া Open ID ও User Access Token সেট করতে হবে; Content Posting-এর জন্য app approval এবং video.publish scope লাগে।",
+        "linkedin": "✅ LinkedIn account যুক্ত হয়েছে। Person/Organization URN ও অনুমোদিত OAuth Access Token সেট করো।",
+    }
+    hint = hints.get(p.lower(), f"✅ {p} account added. This platform's authentication fields are not configured yet; add its schema to PLATFORM_ACCOUNT_FIELDS before connecting it.")
 
     await _render_channel_dashboard(update, p, name, notice=hint)
     return ConversationHandler.END
