@@ -9,7 +9,7 @@ _DEFAULT = {
     "active_ai": None,
     "custom_platforms": [],
     "user_languages": {},
-    "analysis_selections": {}
+    "analysis_selections": {},\n    "oauth_pending": {}
 }
 
 
@@ -192,3 +192,88 @@ def set_analysis_selection(user_id, targets):
     d.setdefault("analysis_selections", {})[str(user_id)] = clean
     _save(d)
     return clean
+
+
+
+# ---- OAuth state and encrypted platform credentials ----
+def _fernet():
+    key = os.getenv("TOKEN_ENCRYPTION_KEY", "").strip()
+    if not key:
+        raise RuntimeError("TOKEN_ENCRYPTION_KEY environment variable is required.")
+    from cryptography.fernet import Fernet
+    return Fernet(key.encode("utf-8"))
+
+
+def _encrypt_secret(value):
+    if not value:
+        return ""
+    return _fernet().encrypt(str(value).encode("utf-8")).decode("ascii")
+
+
+def _decrypt_secret(value):
+    if not value:
+        return ""
+    from cryptography.fernet import InvalidToken
+    try:
+        return _fernet().decrypt(str(value).encode("ascii")).decode("utf-8")
+    except InvalidToken:
+        raise RuntimeError("Stored OAuth credential cannot be decrypted. Check TOKEN_ENCRYPTION_KEY.")
+
+
+def create_oauth_state(state, payload, expires_at):
+    d = _load()
+    d.setdefault("oauth_pending", {})[state] = {
+        "payload": payload,
+        "expires_at": int(expires_at),
+    }
+    _save(d)
+
+
+def get_oauth_state(state):
+    item = _load().get("oauth_pending", {}).get(state)
+    if not item or int(item.get("expires_at", 0)) < int(__import__("time").time()):
+        return None
+    return item.get("payload")
+
+
+def consume_oauth_state(state):
+    d = _load()
+    item = d.setdefault("oauth_pending", {}).pop(state, None)
+    _save(d)
+    if not item or int(item.get("expires_at", 0)) < int(__import__("time").time()):
+        return None
+    return item.get("payload")
+
+
+def save_youtube_oauth(platform, name, token_data):
+    d = _load()
+    account = d.get("accounts", {}).get(platform, {}).get(name)
+    if not isinstance(account, dict):
+        raise KeyError("YouTube account not found.")
+    account["oauth_access_token_encrypted"] = _encrypt_secret(token_data.get("access_token", ""))
+    refresh = token_data.get("refresh_token")
+    if refresh:
+        account["oauth_refresh_token_encrypted"] = _encrypt_secret(refresh)
+    account["oauth_expires_at"] = int(token_data.get("expires_at", 0))
+    account["oauth_scope"] = token_data.get("scope", "")
+    account["oauth_token_type"] = token_data.get("token_type", "Bearer")
+    account.pop("oauth_token", None)
+    d["accounts"][platform][name] = account
+    _save(d)
+
+
+def get_youtube_oauth(platform, name):
+    account = _load().get("accounts", {}).get(platform, {}).get(name, {})
+    if not isinstance(account, dict):
+        return {}
+    access = account.get("oauth_access_token_encrypted", "")
+    refresh = account.get("oauth_refresh_token_encrypted", "")
+    # Backward compatibility for tokens manually entered before encrypted OAuth storage.
+    legacy_access = account.get("oauth_token", "")
+    return {
+        "access_token": _decrypt_secret(access) if access else legacy_access,
+        "refresh_token": _decrypt_secret(refresh) if refresh else "",
+        "expires_at": int(account.get("oauth_expires_at", 0) or 0),
+        "scope": account.get("oauth_scope", ""),
+        "token_type": account.get("oauth_token_type", "Bearer"),
+    }
