@@ -5,7 +5,7 @@ import storage
 from handlers import ai_connectors, automation, platforms
 from handlers.common import show
 from keyboards import get_main_text, main_menu_markup
-from lang import LANGUAGE_NAMES, get_text
+from lang import CURRENT_LANGUAGE_LABELS, LANGUAGE_NAMES, get_text
 
 
 async def show_update_main_text_menu(update, context, notice=""):
@@ -223,7 +223,7 @@ async def language_home(update, context):
     )])
     await show(
         update,
-        get_text(current, "language_title") + f"\n\nবর্তমান ভাষা: {LANGUAGE_NAMES[current]}",
+        get_text(current, "language_title") + f"\n\n{CURRENT_LANGUAGE_LABELS.get(current, CURRENT_LANGUAGE_LABELS['bn'])}: {LANGUAGE_NAMES[current]}",
         InlineKeyboardMarkup(rows)
     )
 
