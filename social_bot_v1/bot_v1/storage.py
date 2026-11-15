@@ -7,7 +7,8 @@ _DEFAULT = {
     "accounts": {},
     "ai_keys": {},
     "active_ai": None,
-    "custom_platforms": []
+    "custom_platforms": [],
+    "user_languages": {}
 }
 
 
@@ -142,3 +143,21 @@ def set_active_ai(provider):
     d = _load()
     d["active_ai"] = provider
     _save(d)
+
+
+
+# ---- User language preference ----
+def get_user_lang(user_id):
+    """Return the saved language for a Telegram user; Bengali is the default."""
+    return _load().get("user_languages", {}).get(str(user_id), "bn")
+
+
+def set_user_lang(user_id, lang_code):
+    """Save a user's selected language."""
+    from lang import MESSAGES
+    if lang_code not in MESSAGES:
+        return False
+    d = _load()
+    d.setdefault("user_languages", {})[str(user_id)] = lang_code
+    _save(d)
+    return True
