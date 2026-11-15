@@ -9,7 +9,8 @@ _DEFAULT = {
     "active_ai": None,
     "custom_platforms": [],
     "user_languages": {},
-    "analysis_selections": {},\n    "oauth_pending": {}
+    "analysis_selections": {},
+    "oauth_pending": {}
 }
 
 
