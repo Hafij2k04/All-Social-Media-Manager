@@ -53,6 +53,8 @@ def youtube_oauth_callback_route():
         return "Google did not return an authorization code.", 400
     try:
         token_data = oauth.exchange_authorization_code(code)
+        channel_data = oauth.fetch_authorized_youtube_channel(token_data["access_token"])
+        token_data.update(channel_data)
         storage.save_youtube_oauth(payload["platform"], payload["name"], token_data)
     except Exception:
         log.exception("YouTube OAuth callback failed")
