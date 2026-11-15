@@ -112,3 +112,26 @@ LANGUAGE_NAMES = {
 def get_text(lang_code, key):
     lang = MESSAGES.get(lang_code, MESSAGES["bn"])
     return lang.get(key, MESSAGES["bn"].get(key, key))
+
+
+MENU_HINTS = {
+    "bn": "নিচের মেনু থেকে বেছে নাও।",
+    "en": "Choose an option from the menu below.",
+    "hi": "नीचे दिए गए मेनू से विकल्प चुनें।",
+    "ur": "نیچے دیے گئے مینو سے ایک آپشن منتخب کریں۔",
+    "zh": "请从下方菜单中选择一个选项。",
+    "ar": "اختر خياراً من القائمة أدناه.",
+    "ne": "तलको मेनुबाट एउटा विकल्प छान्नुहोस्।",
+    "as": "তলৰ মেনুৰ পৰা এটা বিকল্প বাছনি কৰক।",
+}
+
+CURRENT_LANGUAGE_LABELS = {
+    "bn": "বর্তমান ভাষা",
+    "en": "Current language",
+    "hi": "वर्तमान भाषा",
+    "ur": "موجودہ زبان",
+    "zh": "当前语言",
+    "ar": "اللغة الحالية",
+    "ne": "हालको भाषा",
+    "as": "বৰ্তমান ভাষা",
+}
