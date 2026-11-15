@@ -58,7 +58,7 @@ def main():
 
     app = ApplicationBuilder().token(config.BOT_TOKEN).build()
     
-    TypeHandler(callback=auth_gate)
+    TypeHandler(Update, auth_gate)
 
     # আপনার আগের সব হ্যান্ডলার এখানে অক্ষত আছে
     app.add_handler(CommandHandler("start", start))
