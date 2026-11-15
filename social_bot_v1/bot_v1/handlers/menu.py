@@ -40,6 +40,9 @@ async def menu_router(update, context):
     action = update.callback_query.data.split(":", 1)[1]
     if action == "main":
         await show(update, MAIN_TEXT, main_menu_markup())
+    elif action.startswith('lang:'):
+        storage.set_user_lang(update.effective_user.id, action.split(':')[1])
+        await show_update_main_text_menu(update, context)
     elif action == "accounts":
         await platforms.accounts_home(update, context)
     elif action == "ai":
