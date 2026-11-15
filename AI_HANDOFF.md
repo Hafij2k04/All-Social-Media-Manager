@@ -107,8 +107,9 @@ Implemented the first platform OAuth flow for YouTube:
 - Flask routes `/oauth/youtube/start` and `/oauth/youtube/callback` redirect to Google and exchange the authorization code.
 - Requested scopes: `youtube.readonly` and `youtube.upload`.
 - Access and refresh tokens are encrypted with Fernet before being stored in the JSON account record. `TOKEN_ENCRYPTION_KEY` is mandatory for OAuth.
-- Refresh helper is available in `oauth.get_valid_youtube_access_token(platform, account_name)`; use this when implementing authenticated YouTube API calls.
-- Token refresh is implemented as a helper but is not yet wired into upload or analytics services.
+- Refresh helper is available in `oauth.get_valid_youtube_access_token(platform, account_name)`.
+- The YouTube account **Sync YouTube Stats** action now obtains/decrypts the OAuth token, refreshes it when near expiry, and calls YouTube Data API with Bearer authorization. API-key public-stat lookup remains a fallback.
+- Token refresh is not yet wired into video upload because the current upload workflow is still a UI placeholder.
 - Google client credentials are environment-only: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and exact `GOOGLE_REDIRECT_URI`.
 - `GOOGLE_REDIRECT_URI` must be the deployed HTTPS Render service URL plus `/oauth/youtube/callback`.
 - Generate a Fernet key locally with Python: `from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())`. Put the output in Render as `TOKEN_ENCRYPTION_KEY`; never commit or paste it into chat.
@@ -126,3 +127,12 @@ The callback now calls YouTube Data API `channels.list?part=snippet&mine=true` u
 To generate the Fernet-compatible key on the user's Windows PC without installing any package, run:
 `python -c "import secrets,base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"`
 Copy the one-line output into Render Environment Variables as `TOKEN_ENCRYPTION_KEY`. Keep it private and never change it after OAuth tokens have been encrypted, or existing saved tokens will become unreadable.
+
+
+### YouTube OAuth follow-up integration (2026-11-16)
+- Updated `services/youtube_service.py` so `fetch_youtube_stats` accepts an OAuth access token and sends it as a Bearer token; API key remains supported as fallback.
+- Updated `handlers/platforms.py` so **Sync YouTube Stats** loads the saved encrypted OAuth token through `oauth.get_valid_youtube_access_token`, automatically refreshing it when needed.
+- Commits: `1122a79` (OAuth stats request support), `4c817bf` (connect token refresh to stats sync).
+- Latest verified files after commits: `services/youtube_service.py` content SHA `3aa0dc1c503c9dfe62ffd6140d3ead235f53dd7f`; `handlers/platforms.py` content SHA `4cee8d3a7ee625982abfd5b117dfc387910fb920`.
+- Not yet tested with live Google credentials or deployed. Do not describe OAuth as verified until the user completes a real Google connection and a stats sync succeeds.
+- Important existing limitation discovered during review: `handlers/upload.py` currently has a placeholder `receive_video` function and its publish action only displays a queued/success-style message; it does not upload a video to YouTube. Fix this before claiming publishing works. Also ensure explicit user approval before any real publish action.
