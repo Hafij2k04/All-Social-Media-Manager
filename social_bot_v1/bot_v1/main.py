@@ -1,3 +1,4 @@
+from telegram import Update
 import asyncio
 import logging
 from threading import Thread
