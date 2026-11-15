@@ -36,6 +36,8 @@ def _render_home_text(user_id, context):
 
 
 async def analyze_home(update, context):
+    if "analysis_selected_targets" not in context.user_data:
+        context.user_data["analysis_selected_targets"] = storage.get_analysis_selection(update.effective_user.id)
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("🎯 Select Platforms & Channels", callback_data="an:select")],
         [InlineKeyboardButton("📊 Channel Analysis", callback_data="an:feature:channel")],
