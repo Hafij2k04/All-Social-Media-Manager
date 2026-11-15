@@ -97,3 +97,21 @@ Before changing code:
 - This is a credential UI/schema improvement, not completed OAuth authorization flows. Tokens are still entered manually; real OAuth connect/callback, refresh-token lifecycle, and platform API integrations remain future work.
 - Official auth distinction: YouTube API keys are for public data; OAuth 2.0 is required for private data and upload. TikTok Content Posting requires user OAuth, approved `video.publish` scope, and Open ID. Meta Page/Instagram access depends on the relevant Page/Professional account permissions. LinkedIn uses OAuth 2.0 and granted product scopes.
 - Commits: `f2d2b4e` (platform-specific fields), `2596410` (labels and setup guidance), `58efda2` (TikTok Open ID separation), `e0f9e8f` (TikTok prompt correction).
+
+
+## YouTube OAuth 2.0 connection flow (2026-11-15)
+
+Implemented the first platform OAuth flow for YouTube:
+- The YouTube account dashboard has a **Connect YouTube with Google** action.
+- The bot creates a random, one-time OAuth state with a 10-minute expiry and a Telegram user/account reference.
+- Flask routes `/oauth/youtube/start` and `/oauth/youtube/callback` redirect to Google and exchange the authorization code.
+- Requested scopes: `youtube.readonly` and `youtube.upload`.
+- Access and refresh tokens are encrypted with Fernet before being stored in the JSON account record. `TOKEN_ENCRYPTION_KEY` is mandatory for OAuth.
+- Refresh helper is available in `oauth.get_valid_youtube_access_token(platform, account_name)`; use this when implementing authenticated YouTube API calls.
+- Token refresh is implemented as a helper but is not yet wired into upload or analytics services.
+- Google client credentials are environment-only: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and exact `GOOGLE_REDIRECT_URI`.
+- `GOOGLE_REDIRECT_URI` must be the deployed HTTPS Render service URL plus `/oauth/youtube/callback`.
+- Generate a Fernet key locally with Python: `from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())`. Put the output in Render as `TOKEN_ENCRYPTION_KEY`; never commit or paste it into chat.
+- In Google Cloud Console, configure an OAuth client for a Web application, add the exact callback URL to Authorized redirect URIs, enable YouTube Data API v3, and configure the OAuth consent screen/test users as required.
+- The app has not been tested against a real Google OAuth client and has not been deployed. The user must configure the four environment variables and redeploy before the Connect button can complete a real connection.
+- Existing manually entered tokens remain supported for compatibility; new OAuth tokens are encrypted.
