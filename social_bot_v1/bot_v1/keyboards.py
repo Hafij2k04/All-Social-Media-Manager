@@ -15,10 +15,7 @@ def main_menu_markup(lang_code="bn"):
 
 
 def get_main_text(lang_code="bn"):
-    return get_text(lang_code, "welcome") + "\n" + (
-        "নিচের মেনু থেকে বেছে নাও।" if lang_code == "bn"
-        else "Choose an option from the menu below."
-    )
+    return get_text(lang_code, "welcome") + "\\n" + MENU_HINTS.get(lang_code, MENU_HINTS["bn"])
 
 
 # Backward-compatible default for existing imports.
