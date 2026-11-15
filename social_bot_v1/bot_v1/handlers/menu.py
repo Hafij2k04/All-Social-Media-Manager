@@ -27,10 +27,10 @@ async def status(update, context):
 
 async def language_home(update, context):
     markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🇧🇩 বাংলা", callback_data="menu:main"),
-         InlineKeyboardButton("🇺🇸 English", callback_data="menu:main"),
-         InlineKeyboardButton("🇮🇳 Hindi", callback_data="menu:main"),
-         InlineKeyboardButton("🇵🇰 Urdu", callback_data="menu:main")],
+        [InlineKeyboardButton("🇧🇩 বাংলা", callback_data="'lang:bn'"),
+         InlineKeyboardButton("🇺🇸 English", callback_data="'lang:en'"),
+         InlineKeyboardButton("🇮🇳 Hindi", callback_data="'lang:hi'"),
+         InlineKeyboardButton("🇵🇰 Urdu", callback_data="'lang:ur'")],
         [InlineKeyboardButton("🔙 Main Menu", callback_data="menu:main")],
     ])
     await show(update, "🌐 ভাষা নির্বাচন করো / Select Language:", markup)
