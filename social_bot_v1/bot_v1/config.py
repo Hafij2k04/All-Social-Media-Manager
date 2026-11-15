@@ -23,3 +23,9 @@ AI_MODELS = {
     "Gemini": os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
     "Grok": os.environ.get("GROK_MODEL", "grok-4"),
 }
+
+
+# YouTube OAuth 2.0 credentials (set as Render Environment Variables).
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "")
