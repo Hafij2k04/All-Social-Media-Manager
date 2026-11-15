@@ -67,18 +67,26 @@ async def language_home(update, context):
 
 
 async def menu_router(update, context):
-    action = update.callback_query.data.split(":", 1)[1]
-    if action == "main":
-        await show_update_main_text_menu(update, context)
-    elif action.startswith("lang:"):
-        lang_code = action.split(":", 1)[1]
+    callback_data = update.callback_query.data
+
+    # Language buttons use "lang:<code>", not the "menu:<action>" prefix.
+    # Handle them before parsing menu actions.
+    if callback_data.startswith("lang:"):
+        lang_code = callback_data.split(":", 1)[1]
+        await update.callback_query.answer()
         if storage.set_user_lang(update.effective_user.id, lang_code):
-            await update.callback_query.answer("Language updated")
             await show_update_main_text_menu(
                 update, context, get_text(lang_code, "language_saved")
             )
         else:
-            await update.callback_query.answer("Unsupported language", show_alert=True)
+            await update.callback_query.answer(
+                "Unsupported language", show_alert=True
+            )
+        return
+
+    action = callback_data.split(":", 1)[1]
+    if action == "main":
+        await show_update_main_text_menu(update, context)
     elif action == "accounts":
         await platforms.accounts_home(update, context)
     elif action == "ai":
