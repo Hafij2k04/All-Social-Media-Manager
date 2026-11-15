@@ -21,6 +21,25 @@ WAIT_ACCOUNT = 1
 WAIT_FIELD_UPDATE = 2
 WAIT_NEW_PLATFORM = 3
 
+
+ACCOUNT_UI = {
+ "bn": {"choose":"📺 কোন প্ল্যাটফর্ম ম্যানেজ করবে?\\nনিচ থেকে প্ল্যাটফর্ম সিলেক্ট করো:", "add_platform":"➕ Add Another Platform", "main":"🔙 মেইন মেনু", "list":"যুক্ত করা অ্যাকাউন্ট তালিকা:", "connected":"🟢 = কানেক্টেড | 🟡 = টোকেন/API সেটআপ বাকি", "open":"ড্যাশবোর্ডে যেতে অ্যাকাউন্টের নাম চাপো:", "empty":"এখনো কোনো অ্যাকাউন্ট যোগ করা হয়নি।\\nনতুন অ্যাকাউন্ট যোগ করতে নিচের বাটনে চাপো।", "add":"➕ Add {p} Account", "all":"🔙 All Platforms"},
+ "en": {"choose":"📺 Which platform would you like to manage?\\nSelect a platform below:", "add_platform":"➕ Add Another Platform", "main":"🔙 Main Menu", "list":"Connected accounts:", "connected":"🟢 = Connected | 🟡 = Token/API setup required", "open":"Select an account name to open its dashboard:", "empty":"No accounts have been added yet.\\nUse the button below to add a new account.", "add":"➕ Add {p} Account", "all":"🔙 All Platforms"},
+ "hi": {"choose":"📺 आप किस प्लेटफ़ॉर्म को प्रबंधित करना चाहते हैं?\\nनीचे से प्लेटफ़ॉर्म चुनें:", "add_platform":"➕ दूसरा प्लेटफ़ॉर्म जोड़ें", "main":"🔙 मुख्य मेनू", "list":"जोड़े गए अकाउंट:", "connected":"🟢 = कनेक्टेड | 🟡 = टोकन/API सेटअप बाकी", "open":"डैशबोर्ड खोलने के लिए अकाउंट का नाम चुनें:", "empty":"अभी कोई अकाउंट नहीं जोड़ा गया।\\nनया अकाउंट जोड़ने के लिए नीचे दबाएँ।", "add":"➕ {p} अकाउंट जोड़ें", "all":"🔙 सभी प्लेटफ़ॉर्म"},
+ "ur": {"choose":"📺 آپ کس پلیٹ فارم کو منظم کرنا چاہتے ہیں؟\\nنیچے سے پلیٹ فارم منتخب کریں:", "add_platform":"➕ ایک اور پلیٹ فارم شامل کریں", "main":"🔙 مین مینو", "list":"شامل کردہ اکاؤنٹس:", "connected":"🟢 = منسلک | 🟡 = ٹوکن/API سیٹ اپ باقی", "open":"ڈیش بورڈ کھولنے کے لیے اکاؤنٹ کا نام منتخب کریں:", "empty":"ابھی کوئی اکاؤنٹ شامل نہیں۔\\nنیا اکاؤنٹ شامل کرنے کے لیے نیچے دبائیں۔", "add":"➕ {p} اکاؤنٹ شامل کریں", "all":"🔙 تمام پلیٹ فارمز"},
+ "zh": {"choose":"📺 请选择要管理的平台：\\n从下方选择平台：", "add_platform":"➕ 添加其他平台", "main":"🔙 主菜单", "list":"已添加的账号：", "connected":"🟢 = 已连接 | 🟡 = 需要设置令牌/API", "open":"点击账号名称打开控制面板：", "empty":"尚未添加账号。\\n点击下方按钮添加账号。", "add":"➕ 添加 {p} 账号", "all":"🔙 所有平台"},
+ "ar": {"choose":"📺 ما المنصة التي تريد إدارتها؟\\nاختر منصة أدناه:", "add_platform":"➕ إضافة منصة أخرى", "main":"🔙 القائمة الرئيسية", "list":"الحسابات المضافة:", "connected":"🟢 = متصل | 🟡 = إعداد الرمز/API مطلوب", "open":"اختر اسم الحساب لفتح لوحة التحكم:", "empty":"لم تتم إضافة أي حساب بعد.\\nاضغط أدناه لإضافة حساب جديد.", "add":"➕ إضافة حساب {p}", "all":"🔙 كل المنصات"},
+ "ne": {"choose":"📺 कुन प्लेटफर्म व्यवस्थापन गर्न चाहनुहुन्छ?\\nतलबाट प्लेटफर्म छान्नुहोस्:", "add_platform":"➕ अर्को प्लेटफर्म थप्नुहोस्", "main":"🔙 मुख्य मेनु", "list":"थपिएका खाताहरू:", "connected":"🟢 = जडान भयो | 🟡 = Token/API सेटअप बाँकी", "open":"ड्यासबोर्ड खोल्न खाताको नाम छान्नुहोस्:", "empty":"अहिलेसम्म कुनै खाता थपिएको छैन।\\nनयाँ खाता थप्न तल थिच्नुहोस्।", "add":"➕ {p} खाता थप्नुहोस्", "all":"🔙 सबै प्लेटफर्म"},
+ "as": {"choose":"📺 কোনটো প্লেটফৰ্ম পৰিচালনা কৰিব বিচাৰে?\\nতলৰ পৰা প্লেটফৰ্ম বাছনি কৰক:", "add_platform":"➕ আন এটা প্লেটফৰ্ম যোগ কৰক", "main":"🔙 মূল মেনু", "list":"যোগ কৰা একাউণ্টসমূহ:", "connected":"🟢 = সংযুক্ত | 🟡 = Token/API ছেটআপ বাকী", "open":"ডেশ্বব’ৰ্ড খুলিবলৈ একাউণ্টৰ নামত ক্লিক কৰক:", "empty":"এতিয়াও কোনো একাউণ্ট যোগ কৰা হোৱা নাই।\\nনতুন একাউণ্ট যোগ কৰিবলৈ তলত ক্লিক কৰক।", "add":"➕ {p} একাউণ্ট যোগ কৰক", "all":"🔙 সকলো প্লেটফৰ্ম"},
+}
+
+
+def _account_t(update, key, **kwargs):
+    code = storage.get_user_lang(update.effective_user.id)
+    table = ACCOUNT_UI.get(code, ACCOUNT_UI["bn"])
+    return table.get(key, ACCOUNT_UI["en"].get(key, key)).format(**kwargs)
+
+
 PLATFORM_ICONS = {
     "youtube": "▶️",
     "facebook": "📘",
@@ -74,9 +93,9 @@ async def accounts_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
         count = len(accs.get(p, {}))
         rows.append([InlineKeyboardButton(f"{icon} {p} ({count})", callback_data=f"acc:{p}")])
 
-    rows.append([InlineKeyboardButton("➕ Add Another Platform", callback_data="menu:add_platform")])
-    rows.append([InlineKeyboardButton("🔙 Main Menu", callback_data="menu:main")])
-    await show(update, "📺 **কোন প্ল্যাটফর্ম ম্যানেজ করবে?**\nনিচ থেকে প্ল্যাটফর্ম সিলেক্ট করো:", InlineKeyboardMarkup(rows))
+    rows.append([InlineKeyboardButton(_account_t(update, "add_platform"), callback_data="menu:add_platform")])
+    rows.append([InlineKeyboardButton(_account_t(update, "main"), callback_data="menu:main")])
+    await show(update, _account_t(update, "choose"), InlineKeyboardMarkup(rows))
 
 
 async def _render_platform(update: Update, p: str):
@@ -86,9 +105,9 @@ async def _render_platform(update: Update, p: str):
 
     if chans:
         body = (
-            f"{icon} **{p} — যুক্ত করা অ্যাকাউন্ট তালিকা:**\n\n"
-            f"🟢 = কানেক্টেড | 🟡 = টোকেন/API সেটআপ বাকি\n"
-            f"যেকোনো অ্যাকাউন্টের ড্যাশবোর্ডে যেতে নামের ওপর ক্লিক করো:"
+            f"{icon} **{p} — {_account_t(update, 'list')}**\\n\\n"
+            f"{_account_t(update, 'connected')}\\n"
+            f"{_account_t(update, 'open')}"
         )
         for name, info in chans.items():
             if isinstance(info, dict):
@@ -97,11 +116,10 @@ async def _render_platform(update: Update, p: str):
                 has_key = "🟡"
             rows.append([InlineKeyboardButton(f"{has_key} {name}", callback_data=f"acc_item:{p}:{name}")])
     else:
-        body = f"{icon} **{p}**\n\nএখনো কোনো অ্যাকাউন্ট যোগ করা হয়নি।\nনতুন যুক্ত করতে নিচের বাটনে ক্লিক করো।"
+        body = f"{icon} **{p}**\\n\\n{_account_t(update, 'empty')}"
 
-    rows.append([InlineKeyboardButton(f"➕ Add {p} Account", callback_data=f"acc_add:{p}")])
-    rows.append([InlineKeyboardButton("🔙 All Platforms", callback_data="menu:accounts")])
-
+    rows.append([InlineKeyboardButton(_account_t(update, "add", p=p), callback_data=f"acc_add:{p}")])
+    rows.append([InlineKeyboardButton(_account_t(update, "all"), callback_data="menu:accounts")])
     await show(update, body, InlineKeyboardMarkup(rows))
 
 
