@@ -1,13 +1,16 @@
 import asyncio
 import logging
 from threading import Thread
+from html import escape
 
-from flask import Flask
+from flask import Flask, redirect, request
 from telegram import Update
 from telegram.ext import (ApplicationBuilder, ApplicationHandlerStop, CallbackQueryHandler,
                           CommandHandler, MessageHandler, TypeHandler, filters)
 
 import config
+import oauth
+import storage
 from handlers import ai_connectors, automation, menu, platforms, upload
 
 logging.basicConfig(format="%(asctime)s %(name)s %(levelname)s: %(message)s", level=logging.INFO)
@@ -21,6 +24,47 @@ web = Flask(__name__)
 @web.route("/")
 def home():
     return "Bot is running!"
+
+
+@web.route("/oauth/youtube/start")
+def youtube_oauth_start_route():
+    state = request.args.get("state", "")
+    payload = storage.get_oauth_state(state) if state else None
+    if not payload:
+        return "This Google connection link is invalid or expired. Return to Telegram and try again.", 400
+    try:
+        return redirect(oauth.build_authorization_url(state))
+    except Exception:
+        log.exception("Could not start YouTube OAuth")
+        return "YouTube OAuth is not configured correctly. Check the Render environment variables.", 500
+
+
+@web.route("/oauth/youtube/callback")
+def youtube_oauth_callback_route():
+    state = request.args.get("state", "")
+    provider_error = request.args.get("error")
+    payload = storage.consume_oauth_state(state) if state else None
+    if not payload:
+        return "The authorization request is invalid, expired, or already used. Return to Telegram and try again.", 400
+    if provider_error:
+        return "Google authorization was not completed. Return to Telegram and try again.", 400
+    code = request.args.get("code", "")
+    if not code:
+        return "Google did not return an authorization code.", 400
+    try:
+        token_data = oauth.exchange_authorization_code(code)
+        storage.save_youtube_oauth(payload["platform"], payload["name"], token_data)
+    except Exception:
+        log.exception("YouTube OAuth callback failed")
+        return "Could not save the YouTube connection. Check server configuration and try again.", 500
+    account_name = escape(str(payload.get("name", "YouTube account")))
+    return (
+        "<!doctype html><html><head><meta charset='utf-8'><title>YouTube connected</title></head>"
+        "<body style='font-family:Arial,sans-serif;max-width:620px;margin:60px auto;padding:20px'>"
+        "<h2>YouTube account connected successfully</h2>"
+        f"<p><strong>{account_name}</strong> is now authorized.</p>"
+        "<p>You can close this page and return to Telegram.</p></body></html>"
+    )
 
 
 def run_web():
