@@ -115,3 +115,66 @@ def fetch_authorized_youtube_channel(access_token: str) -> dict:
         "channel_title": snippet.get("title", ""),
         "channel_custom_url": snippet.get("customUrl", ""),
     }
+
+
+# ---- Meta / Facebook Login OAuth ----
+META_SCOPES = ["pages_show_list", "pages_read_engagement"]
+
+
+def build_facebook_authorization_url(state: str) -> str:
+    if not config.META_APP_ID or not config.META_REDIRECT_URI:
+        raise RuntimeError("META_APP_ID and META_REDIRECT_URI must be configured.")
+    params = {
+        "client_id": config.META_APP_ID,
+        "redirect_uri": config.META_REDIRECT_URI,
+        "response_type": "code",
+        "scope": ",".join(META_SCOPES),
+        "state": state,
+    }
+    base = f"https://www.facebook.com/{config.META_GRAPH_VERSION}/dialog/oauth"
+    return base + "?" + urllib.parse.urlencode(params)
+
+
+def _facebook_graph_get(path: str, params: dict) -> dict:
+    query = urllib.parse.urlencode(params)
+    url = f"https://graph.facebook.com/{config.META_GRAPH_VERSION}/{path.lstrip('/')}?{query}"
+    request = urllib.request.Request(url, headers={"User-Agent": "All-Social-Media-Manager/1.0"})
+    with urllib.request.urlopen(request, timeout=25) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def exchange_facebook_authorization_code(code: str) -> dict:
+    if not config.META_APP_ID or not config.META_APP_SECRET or not config.META_REDIRECT_URI:
+        raise RuntimeError("Meta OAuth environment variables are incomplete.")
+    short_lived = _facebook_graph_get("oauth/access_token", {
+        "client_id": config.META_APP_ID,
+        "client_secret": config.META_APP_SECRET,
+        "redirect_uri": config.META_REDIRECT_URI,
+        "code": code,
+    })
+    user_token = short_lived.get("access_token", "")
+    if not user_token:
+        raise RuntimeError("Meta did not return a user access token.")
+    long_lived = _facebook_graph_get("oauth/access_token", {
+        "grant_type": "fb_exchange_token",
+        "client_id": config.META_APP_ID,
+        "client_secret": config.META_APP_SECRET,
+        "fb_exchange_token": user_token,
+    })
+    access_token = long_lived.get("access_token", user_token)
+    expires_in = int(long_lived.get("expires_in", short_lived.get("expires_in", 0)) or 0)
+    return {
+        "user_access_token": access_token,
+        "expires_at": int(time.time()) + expires_in if expires_in else 0,
+        "token_type": "Bearer",
+    }
+
+
+def fetch_facebook_pages(user_access_token: str) -> list:
+    """Return Pages the authorizing user can access, including each Page access token."""
+    data = _facebook_graph_get("me/accounts", {
+        "fields": "id,name,access_token,followers_count,fan_count,tasks",
+        "limit": 100,
+        "access_token": user_access_token,
+    })
+    return data.get("data") or []
