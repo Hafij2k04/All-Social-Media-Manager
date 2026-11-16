@@ -354,3 +354,36 @@ def get_youtube_oauth(platform, name):
         "scope": account.get("oauth_scope", ""),
         "token_type": account.get("oauth_token_type", "Bearer"),
     }
+
+
+def save_facebook_oauth(platform, name, token_data):
+    """Encrypt and persist the selected Facebook Page access token."""
+    d = _load()
+    account = d.get("accounts", {}).get(platform, {}).get(name)
+    if not isinstance(account, dict):
+        raise KeyError("Facebook account not found.")
+    page_token = token_data.get("page_access_token", "")
+    if not page_token:
+        raise ValueError("Meta did not return a Page access token.")
+    account["facebook_page_access_token_encrypted"] = _encrypt_secret(page_token)
+    account["facebook_user_token_expires_at"] = int(token_data.get("user_expires_at", 0) or 0)
+    account["facebook_page_token_expires_at"] = int(token_data.get("page_expires_at", 0) or 0)
+    account["channel_id"] = str(token_data.get("page_id") or account.get("channel_id") or "")
+    account["facebook_page_name"] = str(token_data.get("page_name") or name)
+    account["oauth_scope"] = token_data.get("scope", "pages_show_list,pages_read_engagement")
+    # Remove legacy plaintext fields once the encrypted Page token is safely stored.
+    account.pop("oauth_token", None)
+    account.pop("api_key", None)
+    d["accounts"][platform][name] = account
+    _save(d)
+
+
+def get_facebook_page_access_token(platform, name):
+    account = _load().get("accounts", {}).get(platform, {}).get(name, {})
+    if not isinstance(account, dict):
+        return ""
+    encrypted = account.get("facebook_page_access_token_encrypted", "")
+    if encrypted:
+        return _decrypt_secret(encrypted)
+    # Backward compatibility for previously entered manual Page tokens.
+    return account.get("oauth_token") or account.get("api_key") or ""
