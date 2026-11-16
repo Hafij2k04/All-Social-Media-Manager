@@ -1,7 +1,12 @@
-"""ডাটা সেভ/লোড এবং ব্যাকআপ রিকভারি সিস্টেম।"""
+"""ডাটা সেভ/লোড এবং Firestore persistent storage।"""
 import json
+import logging
 import os
+from threading import RLock
+
 import config
+
+log = logging.getLogger(__name__)
 
 _DEFAULT = {
     "accounts": {},
@@ -13,36 +18,100 @@ _DEFAULT = {
     "oauth_pending": {}
 }
 
+_firestore_client = None
+_firestore_checked = False
+_firestore_lock = RLock()
+_firestore_document = None
 
-def _load():
+
+def _normalize(data):
+    if not isinstance(data, dict):
+        data = {}
+    for key, value in _DEFAULT.items():
+        data.setdefault(key, type(value)() if value is not None else None)
+    return data
+
+
+def _get_firestore_document():
+    """Initialize Firebase Admin lazily; local JSON remains available for local development."""
+    global _firestore_client, _firestore_checked, _firestore_document
+    with _firestore_lock:
+        if _firestore_checked:
+            return _firestore_document
+        _firestore_checked = True
+        service_account_path = getattr(
+            config, "FIREBASE_SERVICE_ACCOUNT_FILE",
+            "/etc/secrets/firebase-service-account.json"
+        )
+        if not os.path.isfile(service_account_path):
+            log.warning(
+                "Firebase service-account file not found at %s; using local JSON storage.",
+                service_account_path
+            )
+            return None
+        try:
+            import firebase_admin
+            from firebase_admin import credentials, firestore
+            try:
+                firebase_admin.get_app()
+            except ValueError:
+                firebase_admin.initialize_app(
+                    credentials.Certificate(service_account_path)
+                )
+            _firestore_client = firestore.client()
+            _firestore_document = _firestore_client.collection("app_state").document("main")
+            log.info("Firebase Firestore persistent storage initialized.")
+            return _firestore_document
+        except Exception:
+            _firestore_checked = False
+            log.exception("Firebase initialization failed; refusing silent local fallback.")
+            raise
+
+
+def _load_local():
     if os.path.exists(config.DATA_FILE):
         try:
             with open(config.DATA_FILE, "r", encoding="utf-8") as f:
-                d = json.load(f)
-            for k, v in _DEFAULT.items():
-                d.setdefault(k, type(v)() if v is not None else None)
-            return d
+                return _normalize(json.load(f))
         except Exception:
-            pass
+            log.exception("Could not read local data file.")
+            raise
 
-    # ফাইল না থাকলে Render-এর Environment Variable (INITIAL_DATA_JSON) থেকে রিকভার করার চেষ্টা করবে
     env_backup = os.getenv("INITIAL_DATA_JSON", "").strip()
     if env_backup:
-        try:
-            d = json.loads(env_backup)
-            for k, v in _DEFAULT.items():
-                d.setdefault(k, type(v)() if v is not None else None)
-            _save(d)
-            return d
-        except Exception:
-            pass
-
+        return _normalize(json.loads(env_backup))
     return json.loads(json.dumps(_DEFAULT))
 
 
-def _save(d):
+def _load():
+    document = _get_firestore_document()
+    if document is not None:
+        snapshot = document.get()
+        if snapshot.exists:
+            data = (snapshot.to_dict() or {}).get("payload")
+            if not isinstance(data, dict):
+                raise RuntimeError("Firestore app_state/main document has no valid payload.")
+            return _normalize(data)
+
+        # First run: migrate existing Render/local JSON or INITIAL_DATA_JSON into Firestore.
+        initial_data = _load_local()
+        document.set({"payload": initial_data})
+        log.info("Initial application data migrated to Firestore.")
+        return initial_data
+
+    return _load_local()
+
+
+def _save(data):
+    normalized = _normalize(data)
+    document = _get_firestore_document()
+    if document is not None:
+        # Admin SDK writes server-side; Firestore client security rules do not grant public access.
+        document.set({"payload": normalized})
+        return
+
     with open(config.DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(d, f, indent=2, ensure_ascii=False)
+        json.dump(normalized, f, indent=2, ensure_ascii=False)
 
 
 def export_raw_json() -> str:
