@@ -2,3 +2,4 @@ python-telegram-bot==21.6
 aiohttp>=3.9
 flask>=3.0
 cryptography>=42.0
+firebase-admin>=6.5.0
