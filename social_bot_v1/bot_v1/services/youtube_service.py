@@ -5,11 +5,14 @@ import json
 import urllib.request
 
 
-def _format_num(val) -> str:
+def _format_num(val, unavailable: str = "Unavailable") -> str:
+    # Missing API fields must not be silently converted to a misleading zero.
+    if val is None or val == "":
+        return unavailable
     try:
         return f"{int(val):,}"
-    except Exception:
-        return str(val or "0")
+    except (TypeError, ValueError):
+        return unavailable
 
 
 def extract_channel_identifier(link_or_id: str):
@@ -37,56 +40,64 @@ def extract_channel_identifier(link_or_id: str):
 
 
 def fetch_youtube_stats(channel_id_or_link: str, api_key: str = "", access_token: str = ""):
-    """YouTube Data API v3 ব্যবহার করে চ্যানেলের রিয়েল-টাইম স্ট্যাটাস নিয়ে আসে।"""
+    """Fetch channel statistics; OAuth uses the channel authorized by the signed-in Google account."""
     if not api_key and not access_token:
         return None, "⚠️ YouTube API Key অথবা Google OAuth connection প্রয়োজন। Account Dashboard থেকে Connect YouTube with Google চাপুন।"
 
     kind, val = extract_channel_identifier(channel_id_or_link)
-    if not kind:
+    if not access_token and not kind:
         return None, "⚠️ সঠিক Channel ID (যেমন: UC...) অথবা হ্যান্ডেল (যেমন: @Clipzilla) পাওয়া যায়নি। '🆔 Set ID / Handle' বাটনে গিয়ে এটি সেট করুন।"
 
-    params = {
-        "part": "snippet,statistics",
-        kind: val,
-    }
-    if not access_token:
+    # For OAuth, query the channel belonging to the Google account that granted consent.
+    params = {"part": "snippet,statistics"}
+    if access_token:
+        params["mine"] = "true"
+    else:
+        params[kind] = val
         params["key"] = api_key.strip()
     url = "https://www.googleapis.com/youtube/v3/channels?" + urllib.parse.urlencode(params)
 
     try:
-        headers = {"User-Agent": "Mozilla/5.0"}
+        headers = {"User-Agent": "All-Social-Media-Manager/1.0"}
         if access_token:
             headers["Authorization"] = f"Bearer {access_token}"
         req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=20) as resp:
             data = json.loads(resp.read().decode("utf-8"))
 
-        items = data.get("items", [])
+        items = data.get("items") or []
         if not items:
-            return None, f"❌ `{val}` দিয়ে কোনো YouTube চ্যানেল খুঁজে পাওয়া যায়নি। সঠিক Channel ID বা @Handle দিন।"
+            target = "authorized Google account" if access_token else val
+            return None, f"❌ {target} থেকে কোনো YouTube channel পাওয়া যায়নি। Google-এ সঠিক channel/account নির্বাচন করে আবার Connect করুন।"
 
-        ch = items[0]
-        snippet = ch.get("snippet", {})
-        stats = ch.get("statistics", {})
+        ch = next((item for item in items if item.get("id") == channel_id_or_link), items[0])
+        snippet = ch.get("snippet") or {}
+        stats = ch.get("statistics") or {}
+        if not stats:
+            return None, "❌ YouTube channel পাওয়া গেছে, কিন্তু API statistics দেয়নি। Google OAuth permission এবং YouTube Data API access যাচাই করতে হবে।"
 
         result = {
             "channel_id": ch.get("id", ""),
             "title": snippet.get("title", ""),
-            "subscribers": _format_num(stats.get("subscriberCount", "0")),
-            "views": _format_num(stats.get("viewCount", "0")),
-            "videos": _format_num(stats.get("videoCount", "0")),
+            "subscribers": _format_num(stats.get("subscriberCount"), "Hidden / Not public"),
+            "views": _format_num(stats.get("viewCount")),
+            "videos": _format_num(stats.get("videoCount")),
         }
         return result, None
 
     except urllib.error.HTTPError as e:
         try:
             err_body = json.loads(e.read().decode("utf-8"))
-            msg = err_body.get("error", {}).get("message", str(e))
+            api_error = err_body.get("error", {})
+            msg = api_error.get("message", str(e))
+            reason = (api_error.get("errors") or [{}])[0].get("reason", "")
+            if reason:
+                msg = f"{reason}: {msg}"
         except Exception:
             msg = str(e)
-        return None, f"❌ YouTube API Error: {msg[:120]}"
+        return None, f"❌ YouTube API Error: {msg[:180]}"
     except Exception as e:
-        return None, f"❌ সংযোগ ত্রুটি: {str(e)[:120]}"
+        return None, f"❌ সংযোগ ত্রুটি: {str(e)[:180]}"
 
 
 def fetch_facebook_stats(page_id: str, access_token: str):
