@@ -29,3 +29,8 @@ AI_MODELS = {
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "https://all-social-media-manager.onrender.com/oauth/youtube/callback")
+
+# Firebase Admin SDK service-account JSON is stored as a Render Secret File.
+FIREBASE_SERVICE_ACCOUNT_FILE = os.environ.get(
+    "FIREBASE_SERVICE_ACCOUNT_FILE", "/etc/secrets/firebase-service-account.json"
+)
