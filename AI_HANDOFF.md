@@ -156,3 +156,16 @@ Copy the one-line output into Render Environment Variables as `TOKEN_ENCRYPTION_
 - Important current design limitation: all app state is stored in one Firestore document, subject to Firestore's 1 MiB document limit. This is a first persistence migration; analytics/history should later move to separate documents/collections before the state approaches that limit.
 - Changes committed on `main`: storage.py `089647e`, config.py `2fb4779`, requirements.txt `3ea4036`.
 - Not yet deployed or tested against the user's live Firebase project. Do not ask the user to deploy until the Secret File path/name is confirmed and the code changes are reviewed.
+
+
+### Facebook Page OAuth connection foundation (2026-11-16)
+- Added Meta OAuth environment configuration in `social_bot_v1/bot_v1/config.py`: `META_APP_ID`, `META_APP_SECRET`, `META_REDIRECT_URI`, and `META_GRAPH_VERSION` (default `v25.0`).
+- Added Facebook Login URL generation, authorization-code exchange, long-lived user-token exchange, and `/me/accounts` Page discovery in `oauth.py`.
+- Added `/oauth/facebook/callback` in `main.py`. It matches the intended Page using the saved Page ID first, then exact account/Page name, then auto-selects only when the user has exactly one accessible Page. It does not guess when multiple Pages are available.
+- Added Telegram **Connect Facebook Page** action and Facebook OAuth state creation in `handlers/platforms.py`.
+- Added encrypted Page-token persistence in Firestore through `save_facebook_oauth` and `get_facebook_page_access_token`; old manually entered token fields remain readable as a compatibility fallback.
+- Facebook stats sync now reads the encrypted Page token and uses configured Meta Graph API version.
+- Requested permissions: `pages_show_list` and `pages_read_engagement`. Page-owned fields require the appropriate Meta permissions and Page role/tasks. App Review may be required for users outside app roles / public use.
+- Required Render environment variables (values must be entered by the user, never committed): `META_APP_ID`, `META_APP_SECRET`, `META_REDIRECT_URI=https://all-social-media-manager.onrender.com/oauth/facebook/callback`. Existing `TOKEN_ENCRYPTION_KEY` must remain unchanged.
+- Commits: `32de5ea` config; `4658408` OAuth helpers; `5f4b3aa` encrypted token storage; `14beb52` callback; `5cef028` Telegram action; `b96058b` encrypted-token status; `f4e7561` Graph API version; `b88809a` dashboard button.
+- Source files have been re-fetched after edits. No Python compile test, Meta Developer App setup, live Facebook OAuth, Page-token API call, or Render deployment has been performed yet. Do not claim Facebook is connected until the user configures the Meta app, deploys, completes OAuth, and successfully syncs the intended Page.
