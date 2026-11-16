@@ -285,14 +285,22 @@ async def account_sync(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await _render_channel_dashboard(update, p, name, notice=err)
             return
 
-        info["channel_id"] = res.get("channel_id") or info["channel_id"]
+        synced_channel_id = res.get("channel_id") or info.get("channel_id", "")
+        if synced_channel_id:
+            info["channel_id"] = synced_channel_id
+            info["link"] = "https://www.youtube.com/channel/" + synced_channel_id
+        info["channel_title"] = res.get("title") or info.get("channel_title", "")
         info["stats"] = {
-            "subscribers": res.get("subscribers", "0"),
-            "views": res.get("views", "0"),
-            "videos": res.get("videos", "0"),
+            "subscribers": res.get("subscribers", "Unavailable"),
+            "views": res.get("views", "Unavailable"),
+            "videos": res.get("videos", "Unavailable"),
         }
         storage.add_account(p, name, info)
-        await _render_channel_dashboard(update, p, name, notice="✅ YouTube থেকে সফলভাবে লাইভ ডেটা আপডেট হয়েছে!")
+        channel_label = info.get("channel_title") or name
+        await _render_channel_dashboard(
+            update, p, name,
+            notice=f"✅ {channel_label} চ্যানেলের ডেটা YouTube থেকে আনা হয়েছে। কোনো সংখ্যা Hidden / Not public দেখালে সেটি YouTube-এর privacy setting-এর কারণে।"
+        )
 
     elif p.lower() == "facebook":
         token = info.get("oauth_token") or info.get("api_key") or ""
