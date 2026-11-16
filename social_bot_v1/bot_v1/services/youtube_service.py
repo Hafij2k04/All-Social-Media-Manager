@@ -4,6 +4,8 @@ import urllib.error
 import json
 import urllib.request
 
+import config
+
 
 def _format_num(val, unavailable: str = "Unavailable") -> str:
     # Missing API fields must not be silently converted to a misleading zero.
@@ -111,7 +113,7 @@ def fetch_facebook_stats(page_id: str, access_token: str):
         "fields": "id,name,followers_count,fan_count",
         "access_token": access_token.strip()
     }
-    url = f"https://graph.facebook.com/v19.0/{urllib.parse.quote(page_id.strip())}?" + urllib.parse.urlencode(params)
+    url = f"https://graph.facebook.com/{config.META_GRAPH_VERSION}/{urllib.parse.quote(page_id.strip())}?" + urllib.parse.urlencode(params)
 
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
