@@ -144,3 +144,15 @@ Copy the one-line output into Render Environment Variables as `TOKEN_ENCRYPTION_
 - Updated `handlers/platforms.py` to save the returned channel ID, canonical channel URL, channel title, and stats; the sync notice identifies the channel whose data was retrieved.
 - Commits: `fa8e4d6` (OAuth stats lookup and missing-value handling), `ca2e648` (save and report the returned channel identity).
 - Source files were re-fetched from GitHub after updates. No live API call with the user's private OAuth credentials, Python compile test, or Render deployment verification has been performed yet. User must test **Sync YouTube Stats** after Render deploys the latest main branch.
+
+### Firebase Firestore persistence integration (2026-11-16)
+- Added Firebase Admin SDK dependency to `social_bot_v1/bot_v1/requirements.txt`.
+- Added `FIREBASE_SERVICE_ACCOUNT_FILE` configuration in `config.py`, defaulting to Render Secret File path `/etc/secrets/firebase-service-account.json`.
+- Updated `storage.py` to use Firestore document `app_state/main` (field `payload`) when the service-account file exists.
+- On first Firestore run, if the document does not exist, the app migrates the current local `bot_data.json` or `INITIAL_DATA_JSON` data into Firestore. Existing storage functions continue to use the same load/save interface.
+- When the Secret File is absent (e.g. local development), storage falls back to local JSON. If Firebase initialization fails while the file exists, the error is raised rather than silently falling back and risking split data.
+- Firestore Admin SDK runs server-side and bypasses Firestore client security rules; keep public client rules denied. Never put the service-account JSON in GitHub or chat.
+- Render Secret File filename must be exactly `firebase-service-account.json`; expected mounted path: `/etc/secrets/firebase-service-account.json`.
+- Important current design limitation: all app state is stored in one Firestore document, subject to Firestore's 1 MiB document limit. This is a first persistence migration; analytics/history should later move to separate documents/collections before the state approaches that limit.
+- Changes committed on `main`: storage.py `089647e`, config.py `2fb4779`, requirements.txt `3ea4036`.
+- Not yet deployed or tested against the user's live Firebase project. Do not ask the user to deploy until the Secret File path/name is confirmed and the code changes are reviewed.
