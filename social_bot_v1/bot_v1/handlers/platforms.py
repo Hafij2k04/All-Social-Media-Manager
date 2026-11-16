@@ -227,6 +227,7 @@ async def _render_channel_dashboard(update: Update, p: str, name: str, notice: s
         text += f"\n📈 **{t[7]}:**\n• {t[9]}: **{stats.get('subscribers','0')}**\n• {t[10]}: **{stats.get('views','0')}**\n• {t[11]}: **{stats.get('videos','0')}**\n"
         rows.insert(0,[InlineKeyboardButton("🔄 Sync YouTube Stats",callback_data=f"acc_sync:{p}:{name}")])
     elif low == "facebook":
+        rows.insert(0, [InlineKeyboardButton("🔗 Connect Facebook Page", callback_data=f"fb_oauth:{name}")])
         text += f"\n📈 **{t[8]}:**\n• {t[12]}: **{stats.get('subscribers','0')}**\n• {t[13]}: **{stats.get('views','0')}**\n"
         rows.insert(0,[InlineKeyboardButton("🔄 Sync Facebook Page Stats",callback_data=f"acc_sync:{p}:{name}")])
     elif low in ("instagram","tiktok","linkedin"):
