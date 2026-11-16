@@ -136,3 +136,11 @@ Copy the one-line output into Render Environment Variables as `TOKEN_ENCRYPTION_
 - Latest verified files after commits: `services/youtube_service.py` content SHA `3aa0dc1c503c9dfe62ffd6140d3ead235f53dd7f`; `handlers/platforms.py` content SHA `4cee8d3a7ee625982abfd5b117dfc387910fb920`.
 - Not yet tested with live Google credentials or deployed. Do not describe OAuth as verified until the user completes a real Google connection and a stats sync succeeds.
 - Important existing limitation discovered during review: `handlers/upload.py` currently has a placeholder `receive_video` function and its publish action only displays a queued/success-style message; it does not upload a video to YouTube. Fix this before claiming publishing works. Also ensure explicit user approval before any real publish action.
+
+
+### YouTube OAuth statistics sync correction (2026-11-16)
+- Updated `services/youtube_service.py`: OAuth-based stats sync now requests the channel(s) owned by the authorized Google account using `channels.list?part=snippet,statistics&mine=true`, rather than relying on a potentially stale/manual channel ID or handle.
+- Missing API fields are no longer silently converted to `0`: hidden subscriber counts are labeled `Hidden / Not public`, and other missing values are labeled `Unavailable`. API errors include the returned reason when available.
+- Updated `handlers/platforms.py` to save the returned channel ID, canonical channel URL, channel title, and stats; the sync notice identifies the channel whose data was retrieved.
+- Commits: `fa8e4d6` (OAuth stats lookup and missing-value handling), `ca2e648` (save and report the returned channel identity).
+- Source files were re-fetched from GitHub after updates. No live API call with the user's private OAuth credentials, Python compile test, or Render deployment verification has been performed yet. User must test **Sync YouTube Stats** after Render deploys the latest main branch.
