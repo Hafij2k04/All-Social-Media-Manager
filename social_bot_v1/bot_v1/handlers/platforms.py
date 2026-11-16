@@ -202,7 +202,10 @@ async def _render_channel_dashboard(update: Update, p: str, name: str, notice: s
             except Exception:
                 value = None
         if field == "oauth_token" and low == "facebook":
-            value = value or info.get("api_key")  # legacy Facebook token compatibility
+            try:
+                value = storage.get_facebook_page_access_token(p, name)
+            except Exception:
+                value = value or info.get("api_key")  # legacy Facebook token compatibility
         status = f"✅ {t[1]}" if value else f"⚪ {t[2]}"
         field_labels = {
             "youtube": {"channel_id":"Channel ID / Handle","api_key":"YouTube API Key (public data)","oauth_token":"YouTube OAuth 2.0 Token"},
@@ -252,6 +255,51 @@ async def youtube_oauth_start(update: Update, context: ContextTypes.DEFAULT_TYPE
     keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("Continue with Google", url=auth_url)], [InlineKeyboardButton("🔙 Account Dashboard", callback_data=f"acc_item:{platform}:{name}")]])
     await show(update, f"🔐 **Connect {name} with Google**\n\nContinue with Google, choose the correct YouTube channel owner account, and approve the requested YouTube permissions. After approval, return to Telegram.", keyboard)
     return ConversationHandler.END
+
+
+async def facebook_oauth_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    name = update.callback_query.data.split(":", 1)[1]
+    platform = "Facebook"
+    accounts = storage.get_accounts().get(platform, {})
+    if name not in accounts:
+        await _render_platform(update, platform)
+        return ConversationHandler.END
+    required = (
+        config.META_APP_ID,
+        config.META_APP_SECRET,
+        config.META_REDIRECT_URI,
+        os.environ.get("TOKEN_ENCRYPTION_KEY", ""),
+    )
+    if not all(required):
+        await show(
+            update,
+            "⚠️ Facebook OAuth এখনো কনফিগার করা হয়নি। Render Environment Variables-এ META_APP_ID, META_APP_SECRET, META_REDIRECT_URI এবং TOKEN_ENCRYPTION_KEY সেট করতে হবে।",
+            InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Account Dashboard", callback_data=f"acc_item:{platform}:{name}")]]),
+        )
+        return ConversationHandler.END
+    state = secrets.token_urlsafe(32)
+    storage.create_oauth_state(
+        state,
+        {"platform": platform, "name": name, "user_id": update.effective_user.id},
+        int(time.time()) + 600,
+    )
+    try:
+        auth_url = oauth.build_facebook_authorization_url(state)
+    except Exception:
+        logger.exception("Could not create Facebook OAuth URL")
+        await _render_channel_dashboard(update, platform, name, notice="Facebook OAuth URL তৈরি করা যায়নি। Meta App ID/Redirect URI যাচাই করো।")
+        return ConversationHandler.END
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("Continue with Facebook", url=auth_url)],
+        [InlineKeyboardButton("🔙 Account Dashboard", callback_data=f"acc_item:{platform}:{name}")],
+    ])
+    await show(
+        update,
+        f"🔐 **Connect {name} with Facebook**\\n\\nFacebook-এ লগইন করে এই অ্যাপকে তোমার Pages তালিকা ও Page engagement data দেখার অনুমতি দাও। সঠিক Page ID আগে থেকে Account Dashboard-এ সেট করা থাকলে সেই Page-টি যুক্ত হবে।",
+        keyboard,
+    )
+    return ConversationHandler.END
+
 
 async def account_item_view(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _, p, name = update.callback_query.data.split(":", 2)
@@ -303,7 +351,12 @@ async def account_sync(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif p.lower() == "facebook":
-        token = info.get("oauth_token") or info.get("api_key") or ""
+        try:
+            token = storage.get_facebook_page_access_token(p, name)
+        except Exception:
+            logger.exception("Could not decrypt Facebook Page access token")
+            await _render_channel_dashboard(update, p, name, notice="⚠️ Facebook token পড়া যায়নি। Render-এর TOKEN_ENCRYPTION_KEY পরিবর্তন হয়েছে কি না যাচাই করো।")
+            return
         target_id = info.get("channel_id") or "me"
         res, err = fetch_facebook_stats(target_id, token)
         if err:
@@ -508,6 +561,7 @@ conv = ConversationHandler(
         CallbackQueryHandler(add_platform_start, pattern=r"^menu:add_platform$"),
         CallbackQueryHandler(account_item_view, pattern=r"^acc_item:"),
         CallbackQueryHandler(youtube_oauth_start, pattern=r"^yt_oauth:"),
+        CallbackQueryHandler(facebook_oauth_start, pattern=r"^fb_oauth:"),
         CallbackQueryHandler(account_sync, pattern=r"^acc_sync:"),
         CallbackQueryHandler(account_delete, pattern=r"^acc_del:"),
     ],
