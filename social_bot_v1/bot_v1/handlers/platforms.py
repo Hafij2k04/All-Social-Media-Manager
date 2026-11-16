@@ -117,7 +117,12 @@ async def _render_platform(update: Update, p: str):
         )
         for name, info in chans.items():
             if isinstance(info, dict):
-                has_key = "🟢" if (info.get("api_key") or info.get("oauth_token")) else "🟡"
+                has_key = "🟢" if (
+                    info.get("api_key")
+                    or info.get("oauth_token")
+                    or info.get("oauth_access_token_encrypted")
+                    or info.get("facebook_page_access_token_encrypted")
+                ) else "🟡"
             else:
                 has_key = "🟡"
             rows.append([InlineKeyboardButton(f"{has_key} {name}", callback_data=f"acc_item:{p}:{name}")])
