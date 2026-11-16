@@ -69,6 +69,70 @@ def youtube_oauth_callback_route():
     )
 
 
+
+@web.route("/oauth/facebook/callback")
+def facebook_oauth_callback_route():
+    state = request.args.get("state", "")
+    provider_error = request.args.get("error")
+    payload = storage.consume_oauth_state(state) if state else None
+    if not payload or payload.get("platform", "").lower() != "facebook":
+        return "This Facebook authorization request is invalid, expired, or already used. Return to Telegram and try again.", 400
+    if provider_error:
+        detail = escape(str(request.args.get("error_description", "Facebook authorization was not completed.")))
+        return f"<h2>Facebook connection was not completed</h2><p>{detail}</p><p>Return to Telegram and try again.</p>", 400
+    code = request.args.get("code", "")
+    if not code:
+        return "Meta did not return an authorization code. Return to Telegram and try again.", 400
+
+    account_name = str(payload.get("name", ""))
+    platform = payload.get("platform", "Facebook")
+    try:
+        token_data = oauth.exchange_facebook_authorization_code(code)
+        pages = oauth.fetch_facebook_pages(token_data["user_access_token"])
+        accounts = storage.get_accounts().get(platform, {})
+        account = accounts.get(account_name, {})
+        target_id = str(account.get("channel_id", "")) if isinstance(account, dict) else ""
+        selected = next((page for page in pages if target_id and str(page.get("id")) == target_id), None)
+        if selected is None:
+            selected = next((page for page in pages if str(page.get("name", "")).casefold() == account_name.casefold()), None)
+        if selected is None and len(pages) == 1:
+            selected = pages[0]
+        if selected is None:
+            available = ", ".join(
+                f"{str(page.get('name', 'Page'))} (ID: {page.get('id', 'unknown')})"
+                for page in pages[:20]
+            ) or "No Pages were returned."
+            raise RuntimeError(
+                "Could not safely identify the intended Facebook Page. "
+                "Set the correct Page ID in the Telegram account dashboard and connect again. "
+                f"Pages available to this Facebook login: {available}"
+            )
+        storage.save_facebook_oauth(platform, account_name, {
+            "page_access_token": selected.get("access_token", ""),
+            "page_id": selected.get("id", ""),
+            "page_name": selected.get("name", account_name),
+            "user_expires_at": token_data.get("expires_at", 0),
+            "scope": ",".join(oauth.META_SCOPES),
+        })
+    except Exception as exc:
+        log.exception("Facebook OAuth callback failed")
+        safe_error = escape(str(exc)[:700])
+        return (
+            "<!doctype html><html><head><meta charset='utf-8'><title>Facebook connection</title></head>"
+            "<body style='font-family:Arial,sans-serif;max-width:720px;margin:60px auto;padding:20px'>"
+            "<h2>Facebook Page connection needs attention</h2>"
+            f"<p>{safe_error}</p><p>Return to Telegram, correct the Page ID if needed, and try again.</p></body></html>"
+        ), 400
+
+    safe_name = escape(str(selected.get("name", account_name)))
+    return (
+        "<!doctype html><html><head><meta charset='utf-8'><title>Facebook connected</title></head>"
+        "<body style='font-family:Arial,sans-serif;max-width:620px;margin:60px auto;padding:20px'>"
+        "<h2>Facebook Page connected successfully</h2>"
+        f"<p><strong>{safe_name}</strong> is now connected.</p>"
+        "<p>You can close this page and return to Telegram.</p></body></html>"
+    )
+
 def run_web():
     web.run(host="0.0.0.0", port=config.PORT)
 
