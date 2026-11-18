@@ -31,6 +31,88 @@ def tiktok_site_verification_file():
     return send_from_directory(__import__("os").path.dirname(__file__), "tiktokrGVe64pzSrLhisXxmYYk7E4ANAQ7SYWt.txt", mimetype="text/plain")
 
 
+# ---- Public legal pages required for platform review ----
+LEGAL_CONTACT_EMAIL = "rjtanjil2k04@gmail.com"
+
+def _legal_page(title, body):
+    return """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>""" + escape(title) + """ | All Social Media Manager</title>
+<style>
+body{font-family:Arial,sans-serif;line-height:1.65;color:#202124;max-width:850px;margin:36px auto;padding:0 20px}
+h1,h2{line-height:1.25;color:#151923}h1{font-size:30px}h2{font-size:20px;margin-top:28px}
+a{color:#1769aa}footer{border-top:1px solid #ddd;margin-top:36px;padding-top:18px;color:#555;font-size:14px}
+</style>
+</head>
+<body>
+<header><h1>""" + escape(title) + """</h1><p>All Social Media Manager</p></header>
+<main>""" + body + """</main>
+<footer>Questions or requests: <a href="mailto:""" + LEGAL_CONTACT_EMAIL + """">""" + LEGAL_CONTACT_EMAIL + """</a></footer>
+</body></html>"""
+
+@web.route("/privacy")
+def privacy_policy():
+    body = """
+<p><strong>Effective date: November 18, 2026</strong></p>
+<p>This Privacy Policy explains how All Social Media Manager (the "Service") handles information when you use the dashboard and connect social media or AI services.</p>
+<h2>Information we handle</h2>
+<ul>
+<li><strong>Account and profile details:</strong> names, usernames, profile or channel identifiers, and links you provide for accounts you choose to manage.</li>
+<li><strong>Connected-service credentials:</strong> authorization tokens and related details returned when you connect a supported platform. OAuth credentials saved through the supported OAuth flow are encrypted by the application before being stored. Older or manually entered credentials may be handled differently.</li>
+<li><strong>Content and instructions:</strong> text, media, publishing instructions, and other information you submit to use the Service.</li>
+<li><strong>AI integration details:</strong> API keys and provider settings that you choose to add for AI features.</li>
+<li><strong>Technical information:</strong> basic request and error information may be processed by the hosting and service providers that operate the Service.</li>
+</ul>
+<h2>How information is used</h2>
+<p>We use this information to operate the dashboard, connect the social accounts you select, carry out actions you request, provide AI-assisted features, troubleshoot errors, and protect the Service from misuse.</p>
+<h2>Storage and service providers</h2>
+<p>Application data is stored in the persistence system configured for the Service. This may be Firebase/Google Cloud Firestore when configured, or local application storage in other deployments. The Service may send relevant information to the social media, AI, hosting, and infrastructure providers needed to perform a feature you request. Those providers process information under their own terms and privacy policies.</p>
+<p>We do not sell your personal information. We do not use your connected accounts to publish content unless you initiate or configure that action through the Service.</p>
+<h2>Security</h2>
+<p>We use technical safeguards available in the application, including encryption for OAuth credentials saved through the supported OAuth flow. No online service or storage method can be guaranteed to be completely secure. Keep your passwords and API keys private and do not share access with people you do not trust.</p>
+<h2>Retention and deletion</h2>
+<p>Information is retained while needed to provide the Service or maintain its operation. To request deletion of your account information, connected-account data, or stored credentials, email us from the address below. Include enough information for us to identify the relevant account, but never send passwords, access tokens, or API secrets. We may ask for reasonable verification before processing a request.</p>
+<h2>Your choices</h2>
+<p>You can stop using the Service and revoke its access from the relevant social platform's security or connected-app settings. Revoking access at a platform may not automatically delete information already stored by the Service; contact us to request deletion.</p>
+<h2>Children</h2>
+<p>The Service is not intended for children under 13, and we do not knowingly seek to collect their personal information.</p>
+<h2>Changes to this policy</h2>
+<p>We may update this policy as the Service changes. The effective date above will be revised when an update is made.</p>
+<h2>Contact and data deletion requests</h2>
+<p>For privacy questions or data deletion requests, contact <a href="mailto:rjtanjil2k04@gmail.com">rjtanjil2k04@gmail.com</a>.</p>
+"""
+    return _legal_page("Privacy Policy", body)
+
+@web.route("/terms")
+def terms_of_service():
+    body = """
+<p><strong>Effective date: November 18, 2026</strong></p>
+<p>These Terms govern your use of All Social Media Manager (the "Service"). By using the Service, you agree to these Terms.</p>
+<h2>Eligibility and account access</h2>
+<p>You may connect only social media accounts that you own or are authorized to manage. You are responsible for keeping your login details, API keys, and connected accounts secure.</p>
+<h2>Permitted use</h2>
+<p>You agree to use the Service lawfully and in accordance with the terms, policies, and technical requirements of each connected platform and AI provider. You must not use the Service for spam, harassment, deceptive activity, unauthorized access, infringement, or any activity that violates applicable law or another service's rules.</p>
+<h2>Your content and publishing activity</h2>
+<p>You retain responsibility for the content you submit, schedule, upload, or publish. You must have all rights and permissions needed to use that content. You are responsible for reviewing publishing destinations, captions, media, and settings before authorizing an action.</p>
+<h2>Third-party services</h2>
+<p>The Service may connect to third-party platforms and providers. Their services are governed by their own terms and policies. We do not control their availability, decisions, API changes, or actions they take regarding your accounts.</p>
+<h2>Availability and changes</h2>
+<p>The Service is provided on an evolving basis. Features may change, be interrupted, or become unavailable, and we do not guarantee uninterrupted or error-free operation.</p>
+<h2>Suspension and termination</h2>
+<p>We may restrict or suspend access where we reasonably believe the Service is being misused, these Terms are being violated, or continued access creates a security or legal risk. You may stop using the Service and revoke connected-app permissions at any time.</p>
+<h2>Disclaimer and limitation</h2>
+<p>To the extent permitted by applicable law, the Service is provided without warranties of any kind. We are not responsible for losses caused by third-party platform outages, account restrictions, API changes, or content you choose to publish.</p>
+<h2>Changes to these Terms</h2>
+<p>We may update these Terms as the Service evolves. Continued use after updated Terms are posted means you accept the updated Terms, to the extent permitted by law.</p>
+<h2>Contact</h2>
+<p>For questions about these Terms, contact <a href="mailto:rjtanjil2k04@gmail.com">rjtanjil2k04@gmail.com</a>.</p>
+"""
+    return _legal_page("Terms of Service", body)
+
+
 @web.route("/oauth/youtube/start")
 def youtube_oauth_start_route():
     state = request.args.get("state", "")
