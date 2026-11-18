@@ -3,7 +3,7 @@ import logging
 from threading import Thread
 from html import escape
 
-from flask import Flask, redirect, request
+from flask import Flask, redirect, request, send_from_directory
 from telegram import Update
 from telegram.ext import (ApplicationBuilder, ApplicationHandlerStop, CallbackQueryHandler,
                           CommandHandler, MessageHandler, TypeHandler, filters)
@@ -24,6 +24,11 @@ web = Flask(__name__)
 @web.route("/")
 def home():
     return "Bot is running!"
+
+
+@web.route("/tiktokrGVe64pzSrLhisXxmYYk7E4ANAQ7SYWt.txt")
+def tiktok_site_verification_file():
+    return send_from_directory(__import__("os").path.dirname(__file__), "tiktokrGVe64pzSrLhisXxmYYk7E4ANAQ7SYWt.txt", mimetype="text/plain")
 
 
 @web.route("/oauth/youtube/start")
